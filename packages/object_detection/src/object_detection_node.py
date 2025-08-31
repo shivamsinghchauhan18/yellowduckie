@@ -1,15 +1,26 @@
 #!/usr/bin/env python3
+
+# Force CPU-only mode before any imports
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['TORCH_USE_CUDA_DSA'] = '0'
+
 import cv2
 import numpy as np
-import os
 import rospy
 from duckietown.dtros import DTROS, NodeType
 from duckietown_msgs.msg import Twist2DStamped
 from cv_bridge import CvBridge
 from sensor_msgs.msg import CompressedImage
-from nn_model.constants import IMAGE_SIZE
-from nn_model.model import Wrapper
-from solution.integration_activity import NUMBER_FRAMES_SKIPPED
+
+try:
+    from nn_model.constants import IMAGE_SIZE
+    from nn_model.model import Wrapper
+    from solution.integration_activity import NUMBER_FRAMES_SKIPPED
+except ImportError as e:
+    rospy.logerr(f"Failed to import required modules: {e}")
+    rospy.logerr("This might be due to missing dependencies or CUDA library issues")
+    exit(1)
 
 class ObjectDetectionNode(DTROS):
     def __init__(self, node_name):
@@ -31,7 +42,14 @@ class ObjectDetectionNode(DTROS):
         )
 
         self.bridge = CvBridge()
-        self.model_wrapper = Wrapper(rospy.get_param("~AIDO_eval", False))
+        
+        try:
+            self.model_wrapper = Wrapper(rospy.get_param("~AIDO_eval", False))
+            self.log("Model wrapper initialized successfully")
+        except Exception as e:
+            self.logerr(f"Failed to initialize model wrapper: {e}")
+            self.logerr("Object detection will be disabled")
+            self.model_wrapper = None
         
         self.initialized = True
         self.log("Initialized!")
@@ -54,7 +72,27 @@ class ObjectDetectionNode(DTROS):
         rgb = bgr[..., ::-1]
         rgb = cv2.resize(rgb, (IMAGE_SIZE, IMAGE_SIZE))
 
-        bboxes, classes, scores = self.model_wrapper.predict(rgb)
+        # Skip object detection if model wrapper failed to initialize
+        if self.model_wrapper is None:
+            # Publish default driving command
+            vel_cmd = Twist2DStamped()
+            vel_cmd.header.stamp = rospy.Time.now()
+            vel_cmd.v = 0.2
+            vel_cmd.omega = 0.0
+            self.pub_vel.publish(vel_cmd)
+            return
+
+        try:
+            bboxes, classes, scores = self.model_wrapper.predict(rgb)
+        except Exception as e:
+            self.logerr(f"Model prediction failed: {e}")
+            # Publish safe stop command on prediction failure
+            vel_cmd = Twist2DStamped()
+            vel_cmd.header.stamp = rospy.Time.now()
+            vel_cmd.v = 0.0
+            vel_cmd.omega = 0.0
+            self.pub_vel.publish(vel_cmd)
+            return
 
         # Stop logic for ducks and duckiebots
         stop_signal = False

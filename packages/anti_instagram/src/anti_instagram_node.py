@@ -38,6 +38,8 @@ class AntiInstagramNode(DTROS):
         self.bridge = CvBridge()
         self.image_msg = None
         self.mutex = Lock()
+        self.startup_time = rospy.Time.now()
+        self.max_wait_time = rospy.Duration(60.0)  # Wait max 60 seconds for first image from real camera
 
         # Construct publisher
         self.pub = rospy.Publisher(
@@ -73,7 +75,17 @@ class AntiInstagramNode(DTROS):
 
     def calculate_new_parameters(self, event):
         if self.image_msg is None:
-            self.log("Waiting for first image!")
+            elapsed_time = rospy.Time.now() - self.startup_time
+            if elapsed_time < self.max_wait_time:
+                self.log("Waiting for first image!")
+            else:
+                self.logwarn(f"No camera image received after {self.max_wait_time.to_sec()} seconds. Check camera_node.")
+                self.logwarn("Publishing default thresholds to allow system to continue.")
+                # Publish default thresholds so the system doesn't get stuck
+                msg = AntiInstagramThresholds()
+                msg.low = [0, 0, 0]
+                msg.high = [255, 255, 255]
+                self.pub.publish(msg)
             return
         image = self.decode_image_msg()
         (lower_thresholds, higher_thresholds) = self.ai.calculate_color_balance_thresholds(

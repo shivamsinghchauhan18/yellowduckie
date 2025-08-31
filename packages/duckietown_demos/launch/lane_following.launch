@@ -30,6 +30,8 @@
 	    <arg name="/lane_following/stop_line_filter" value="true"/>
 		<arg name="apriltags" value="true" />
 		<arg name="object_detection" value="true"/>
+		<arg name="camera_mock" value="false"/>
+		<arg name="camera" value="true"/>
 
   	</include>
 	

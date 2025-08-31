@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>camera</name>
+  <version>1.0.0</version>
+  <description>Camera driver configuration for Duckiebot</description>
+
+  <maintainer email="developer@duckietown.org">Duckietown Developer</maintainer>
+  <license>GPLv3</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>rospy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>duckietown_msgs</depend>
+  <depend>cv_bridge</depend>
+
+  <export>
+  </export>
+</package>

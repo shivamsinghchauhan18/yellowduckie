@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>camera_mock</name>
+  <version>1.0.0</version>
+  <description>Mock camera node for testing without physical camera hardware</description>
+
+  <maintainer email="developer@duckietown.org">Duckietown Developer</maintainer>
+  <license>GPLv3</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>rospy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>cv_bridge</depend>
+  <depend>duckietown_msgs</depend>
+
+  <export>
+  </export>
+</package>

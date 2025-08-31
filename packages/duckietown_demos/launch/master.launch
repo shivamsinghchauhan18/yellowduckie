@@ -53,6 +53,27 @@
 
     <!-- end switch args -->
 
+    <!-- Camera configuration -->
+    <arg name="camera_mock" default="false" doc="Enable mock camera for testing (disable for real robot)"/>
+    <arg name="camera" default="true" doc="Enable camera node"/>
+    
+    <!-- Mock camera for testing -->
+    <group if="$(arg camera_mock)">
+        <include file="$(find camera_mock)/launch/camera_mock_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="mock_type" value="synthetic"/>
+            <arg name="publish_rate" value="10.0"/>
+        </include>
+    </group>
+    
+    <!-- Real camera node -->
+    <group if="$(eval arg('camera') and not arg('camera_mock'))">
+        <include file="$(find camera)/launch/camera_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="config" value="$(arg config)"/>
+        </include>
+    </group>
+
     <!-- Start Object Detection -->
     <group if="$(arg object_detection)">
         <remap from="object_detection_node/image/compressed" to="camera_node/image/compressed"/>

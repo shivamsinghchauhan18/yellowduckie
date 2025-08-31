@@ -3,7 +3,21 @@ from typing import Tuple
 
 import numpy as np
 
-import torch
+# Force CPU-only mode to avoid CUDA library dependencies
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['TORCH_USE_CUDA_DSA'] = '0'
+
+try:
+    import torch
+    # Ensure PyTorch uses CPU only
+    torch.cuda.is_available = lambda: False
+    torch.backends.cudnn.enabled = False
+    TORCH_AVAILABLE = True
+except ImportError as e:
+    print(f"WARNING: PyTorch not available: {e}")
+    print("Object detection will be disabled")
+    TORCH_AVAILABLE = False
+    torch = None
 
 from dt_data_api import DataClient
 from solution.integration_activity import MODEL_NAME, DT_TOKEN
@@ -34,6 +48,11 @@ def run(input, exception_on_failure=False):
 
 class Wrapper:
     def __init__(self, aido_eval=False):
+        if not TORCH_AVAILABLE:
+            print("WARNING: PyTorch not available, creating dummy wrapper")
+            self.model = None
+            return
+            
         model_name = MODEL_NAME()
 
         models_path = os.path.join(ASSETS_DIR, "nn_models")
@@ -100,9 +119,17 @@ class Wrapper:
                 print(f"Local model is up-to-date!")
 
         # load pytorch model
-        self.model = Model(weight_file_path)
+        try:
+            self.model = Model(weight_file_path)
+            print(f"Model loaded successfully from {weight_file_path}")
+        except Exception as e:
+            print(f"Failed to load model: {e}")
+            self.model = None
 
     def predict(self, image: np.ndarray) -> Tuple[list, list, list]:
+        if self.model is None:
+            # Return empty detections if model is not available
+            return [], [], []
         return self.model.infer(image)
 
 
@@ -110,7 +137,19 @@ class Model:
     def __init__(self, weight_file_path: str):
         super().__init__()
 
-        model = torch.hub.load("/yolov5", "custom", path=weight_file_path, source="local")
+        if not TORCH_AVAILABLE:
+            raise RuntimeError("PyTorch not available, cannot initialize model")
+
+        # Check if YOLOv5 directory exists
+        yolo_path = "/yolov5"
+        if not os.path.exists(yolo_path):
+            raise RuntimeError(f"YOLOv5 directory not found at {yolo_path}")
+            
+        # Check if weight file exists
+        if not os.path.exists(weight_file_path):
+            raise RuntimeError(f"Model weights not found at {weight_file_path}")
+
+        model = torch.hub.load(yolo_path, "custom", path=weight_file_path, source="local")
         model.eval()
 
         use_fp16: bool = JETSON_FP16 and get_device_hardware_brand() == DeviceHardwareBrand.JETSON_NANO
