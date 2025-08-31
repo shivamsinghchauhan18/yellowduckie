@@ -64,6 +64,10 @@ COPY ./assets "${REPO_PATH}/assets"
 # copy the source code (recipe)
 COPY ./packages "${REPO_PATH}/packages"
 
+# fix execute permissions for all Python node files
+RUN find "${REPO_PATH}/packages" -name "*_node.py" -exec chmod +x {} \; && \
+    find "${REPO_PATH}/packages" -name "*.py" -path "*/src/*" -exec chmod +x {} \;
+
 # build packages
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \
   catkin build \
