@@ -12,11 +12,9 @@ compmake-z6==6.1.5
 dt_apriltags
 aido-protocols-daffy
 
-# this is not HEAD, due to some issues with unashable objects (see DTSW-2042)
-git+https://github.com/duckietown/gym-duckietown.git@daffy-mooc2022
-
-# library shared between the agent and colab
-git+https://github.com/duckietown/lib-dt-mooc@v0.0.5
+# Commented out git dependencies that cause network issues during build
+# git+https://github.com/duckietown/gym-duckietown.git@daffy-mooc2022
+# git+https://github.com/duckietown/lib-dt-mooc@v0.0.5
 
 # needed by YOLOv5
 gitpython

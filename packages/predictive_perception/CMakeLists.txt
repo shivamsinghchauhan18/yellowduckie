@@ -9,6 +9,8 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
+catkin_python_setup()
+
 add_message_files(
   FILES
   PredictedTrajectory.msg
@@ -22,8 +24,6 @@ generate_messages(
   std_msgs
   geometry_msgs
 )
-
-catkin_python_setup()
 
 catkin_package(
   CATKIN_DEPENDS rospy std_msgs sensor_msgs geometry_msgs message_runtime
