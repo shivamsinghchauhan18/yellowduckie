@@ -1,0 +1,71 @@
+# Safety System Configuration - Default Parameters
+
+# Emergency Stop System Configuration
+emergency_stop_system:
+  max_response_time: 0.1          # Maximum allowed response time in seconds
+  min_distance_threshold: 0.3     # Minimum safe distance in meters
+  enable_predictive_stop: true    # Enable predictive emergency stopping
+  emergency_timeout: 5.0          # Timeout for emergency state in seconds
+
+# Collision Detection Manager Configuration
+collision_detection_manager:
+  min_safe_distance: 0.3          # Minimum safe distance in meters
+  critical_distance: 0.15         # Critical distance threshold in meters
+  time_horizon: 3.0               # Time horizon for collision prediction in seconds
+  confidence_threshold: 0.7       # Minimum confidence for risk assessment
+  update_rate: 20.0               # Risk assessment update rate in Hz
+
+# Safety Fusion Manager Configuration
+safety_fusion_manager:
+  fusion_update_rate: 10.0        # Safety fusion update rate in Hz
+  health_check_timeout: 2.0       # Timeout for system health checks in seconds
+  safety_margin_buffer: 0.1       # Additional safety margin buffer
+  decision_confidence_threshold: 0.8  # Minimum confidence for safety decisions
+
+# Safety Command Arbiter Configuration
+safety_command_arbiter:
+  max_linear_velocity: 0.5        # Maximum allowed linear velocity in m/s
+  max_angular_velocity: 2.0       # Maximum allowed angular velocity in rad/s
+  safety_override_priority: 10    # Priority level for safety overrides
+  command_timeout: 0.5            # Timeout for command validity in seconds
+  enable_safety_limits: true      # Enable safety constraint enforcement
+
+# Safety Margins Configuration
+safety_margins:
+  following_distance: 2.0         # Time-based following distance in seconds
+  lateral_clearance: 0.2          # Lateral clearance in meters
+  intersection_clearance: 0.5     # Intersection clearance in meters
+  emergency_brake_distance: 0.1   # Emergency braking distance in meters
+
+# Risk Assessment Thresholds
+risk_thresholds:
+  low_risk_distance: 1.0          # Distance threshold for low risk in meters
+  medium_risk_distance: 0.6       # Distance threshold for medium risk in meters
+  high_risk_distance: 0.3         # Distance threshold for high risk in meters
+  critical_risk_distance: 0.15    # Distance threshold for critical risk in meters
+  
+  low_risk_ttc: 5.0               # Time to collision threshold for low risk in seconds
+  medium_risk_ttc: 3.0            # Time to collision threshold for medium risk in seconds
+  high_risk_ttc: 1.5              # Time to collision threshold for high risk in seconds
+  critical_risk_ttc: 0.5          # Time to collision threshold for critical risk in seconds
+
+# System Health Monitoring
+health_monitoring:
+  sensor_timeout: 1.0             # Sensor health check timeout in seconds
+  actuator_timeout: 0.5           # Actuator health check timeout in seconds
+  system_timeout: 2.0             # System health check timeout in seconds
+  health_check_rate: 5.0          # Health monitoring rate in Hz
+
+# Performance Constraints
+performance_constraints:
+  max_cpu_usage: 80.0             # Maximum CPU usage percentage
+  max_memory_usage: 1024          # Maximum memory usage in MB
+  max_network_latency: 100        # Maximum network latency in ms
+  min_battery_level: 20.0         # Minimum battery level percentage
+
+# Logging Configuration
+logging:
+  enable_safety_logging: true     # Enable safety event logging
+  log_level: "INFO"               # Logging level (DEBUG, INFO, WARN, ERROR)
+  max_log_size: 100               # Maximum log file size in MB
+  log_retention_days: 7           # Log retention period in days

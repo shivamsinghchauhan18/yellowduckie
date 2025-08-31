@@ -1,0 +1,13 @@
+# Scene Understanding Module Configuration
+
+# Publishing parameters
+publish_rate: 5.0               # Rate for scene analysis publishing (Hz)
+enable_visualization: true      # Enable debug visualization
+
+# Analysis thresholds
+brightness_threshold_low: 50    # Low brightness threshold for lighting assessment
+brightness_threshold_high: 200  # High brightness threshold for lighting assessment
+traffic_density_threshold: 3    # Number of objects for high traffic classification
+
+# Vehicle name (will be overridden by launch file)
+veh: "duckiebot"

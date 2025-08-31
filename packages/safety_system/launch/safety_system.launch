@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Safety System Launch File -->
+    <!-- Launches all safety system nodes with proper configuration -->
+    
+    <arg name="veh" default="$(env VEHICLE_NAME)" doc="Name of vehicle. ex: megaman"/>
+    <arg name="config" default="baseline" doc="Specify a config."/>
+    <arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman." />
+    
+    <!-- Emergency Stop System Node -->
+    <node name="emergency_stop_system_node" pkg="safety_system" type="emergency_stop_system_node.py" output="screen">
+        <rosparam command="load" file="$(find safety_system)/config/safety_system_node/$(arg param_file_name).yaml"/>
+        <remap from="~collision_risk" to="/$(arg veh)/collision_detection_manager_node/collision_risk"/>
+        <remap from="~manual_emergency" to="/$(arg veh)/manual_emergency"/>
+        <remap from="~system_health" to="/$(arg veh)/safety_fusion_manager_node/system_health_summary"/>
+        <remap from="~car_cmd" to="/$(arg veh)/lane_controller_node/car_cmd"/>
+    </node>
+    
+    <!-- Collision Detection Manager Node -->
+    <node name="collision_detection_manager_node" pkg="safety_system" type="collision_detection_manager_node.py" output="screen">
+        <rosparam command="load" file="$(find safety_system)/config/safety_system_node/$(arg param_file_name).yaml"/>
+        <remap from="~vehicle_detections" to="/$(arg veh)/vehicle_detection_node/centers"/>
+        <remap from="~object_detections" to="/$(arg veh)/object_detection_node/detections"/>
+        <remap from="~car_cmd" to="/$(arg veh)/lane_controller_node/car_cmd"/>
+        <remap from="~lane_pose" to="/$(arg veh)/lane_filter_node/lane_pose"/>
+    </node>
+    
+    <!-- Safety Fusion Manager Node -->
+    <node name="safety_fusion_manager_node" pkg="safety_system" type="safety_fusion_manager_node.py" output="screen">
+        <rosparam command="load" file="$(find safety_system)/config/safety_system_node/$(arg param_file_name).yaml"/>
+        <remap from="~emergency_status" to="/$(arg veh)/emergency_stop_system_node/emergency_status"/>
+        <remap from="~collision_risk" to="/$(arg veh)/collision_detection_manager_node/collision_risk"/>
+        <remap from="~system_health_reports" to="/$(arg veh)/system_health_reports"/>
+        <remap from="~sensor_health" to="/$(arg veh)/sensor_health"/>
+        <remap from="~actuator_health" to="/$(arg veh)/actuator_health"/>
+    </node>
+    
+    <!-- Safety Command Arbiter Node -->
+    <node name="safety_command_arbiter_node" pkg="safety_system" type="safety_command_arbiter_node.py" output="screen">
+        <rosparam command="load" file="$(find safety_system)/config/safety_system_node/$(arg param_file_name).yaml"/>
+        <remap from="~lane_controller_cmd" to="/$(arg veh)/lane_controller_node/car_cmd"/>
+        <remap from="~navigation_cmd" to="/$(arg veh)/navigation_cmd"/>
+        <remap from="~safety_override" to="/$(arg veh)/emergency_stop_system_node/safety_override"/>
+        <remap from="~safety_status" to="/$(arg veh)/safety_fusion_manager_node/safety_status"/>
+        <remap from="~collision_risk" to="/$(arg veh)/collision_detection_manager_node/collision_risk"/>
+        <remap from="~car_cmd" to="/$(arg veh)/car_cmd_safe"/>
+    </node>
+    
+</launch>

@@ -1,0 +1,21 @@
+# Enhanced Object Detection Configuration
+
+# Detection thresholds
+duck_threshold: 0.7         # Confidence threshold for duck detection
+duckiebot_threshold: 0.7    # Confidence threshold for duckiebot detection
+
+# Filtering parameters
+enable_filtering: true      # Enable detection filtering
+enable_tracking: true       # Enable detection tracking
+min_area_threshold: 500     # Minimum bounding box area
+max_area_threshold: 50000   # Maximum bounding box area
+confidence_smoothing: 0.7   # Temporal smoothing factor for confidence
+
+# Region of Interest (ROI) parameters
+roi_left: 0.1              # Left boundary (fraction of image width)
+roi_right: 0.9             # Right boundary (fraction of image width)
+roi_top: 0.2               # Top boundary (fraction of image height)
+roi_bottom: 1.0            # Bottom boundary (fraction of image height)
+
+# AIDO evaluation mode
+AIDO_eval: false

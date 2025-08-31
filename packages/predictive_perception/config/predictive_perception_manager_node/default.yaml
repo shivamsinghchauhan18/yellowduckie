@@ -1,0 +1,20 @@
+# Predictive Perception Manager Configuration
+
+# Tracking parameters
+max_disappeared: 30          # Maximum frames an object can be missing
+max_distance: 50.0          # Maximum distance for associating detections with tracks
+
+# Prediction parameters
+prediction_horizon: 3.0     # Time horizon for trajectory prediction (seconds)
+prediction_dt: 0.1          # Time step for prediction (seconds)
+publish_rate: 10.0          # Rate for publishing predictions (Hz)
+
+# Detection thresholds
+duck_threshold: 0.7         # Confidence threshold for duck detection
+duckiebot_threshold: 0.7    # Confidence threshold for duckiebot detection
+
+# Vehicle name (will be overridden by launch file)
+veh: "duckiebot"
+
+# AIDO evaluation mode
+AIDO_eval: false

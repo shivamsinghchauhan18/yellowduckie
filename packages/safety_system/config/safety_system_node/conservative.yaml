@@ -1,0 +1,51 @@
+# Safety System Configuration - Conservative Parameters
+# More conservative settings for enhanced safety
+
+# Emergency Stop System Configuration
+emergency_stop_system:
+  max_response_time: 0.05         # Faster response time
+  min_distance_threshold: 0.5     # Larger safety distance
+  enable_predictive_stop: true    
+  emergency_timeout: 10.0         # Longer emergency timeout
+
+# Collision Detection Manager Configuration
+collision_detection_manager:
+  min_safe_distance: 0.5          # Larger minimum safe distance
+  critical_distance: 0.25         # Larger critical distance
+  time_horizon: 5.0               # Longer prediction horizon
+  confidence_threshold: 0.6       # Lower confidence threshold (more sensitive)
+  update_rate: 30.0               # Higher update rate
+
+# Safety Fusion Manager Configuration
+safety_fusion_manager:
+  fusion_update_rate: 15.0        # Higher fusion rate
+  health_check_timeout: 1.0       # Shorter timeout (more sensitive)
+  safety_margin_buffer: 0.2       # Larger safety buffer
+  decision_confidence_threshold: 0.9  # Higher confidence requirement
+
+# Safety Command Arbiter Configuration
+safety_command_arbiter:
+  max_linear_velocity: 0.3        # Lower maximum speed
+  max_angular_velocity: 1.5       # Lower maximum angular velocity
+  safety_override_priority: 10    
+  command_timeout: 0.3            # Shorter command timeout
+  enable_safety_limits: true      
+
+# Safety Margins Configuration
+safety_margins:
+  following_distance: 3.0         # Longer following distance
+  lateral_clearance: 0.3          # More lateral clearance
+  intersection_clearance: 0.8     # More intersection clearance
+  emergency_brake_distance: 0.2   # Longer emergency brake distance
+
+# Risk Assessment Thresholds (more conservative)
+risk_thresholds:
+  low_risk_distance: 1.5          
+  medium_risk_distance: 1.0       
+  high_risk_distance: 0.5         
+  critical_risk_distance: 0.25    
+  
+  low_risk_ttc: 8.0               
+  medium_risk_ttc: 5.0            
+  high_risk_ttc: 2.5              
+  critical_risk_ttc: 1.0          

@@ -1,0 +1,7 @@
+# Tracking confidence metrics
+std_msgs/Header header
+uint32 total_tracked_objects
+float32 average_confidence
+float32 tracking_fps
+uint32 lost_tracks_count
+uint32 new_tracks_count

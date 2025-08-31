@@ -1,0 +1,14 @@
+# Perception Data Fusion Configuration
+
+# Fusion parameters
+fusion_rate: 20.0           # Rate for sensor fusion processing (Hz)
+fusion_window: 0.1          # Time window for sensor synchronization (seconds)
+max_data_age: 1.0           # Maximum age of sensor data to consider (seconds)
+
+# Sensor fusion weights
+camera_weight: 0.6          # Weight for camera data in fusion
+imu_weight: 0.3             # Weight for IMU data in fusion
+encoder_weight: 0.1         # Weight for encoder data in fusion
+
+# Vehicle name (will be overridden by launch file)
+veh: "duckiebot"
