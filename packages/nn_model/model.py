@@ -118,10 +118,8 @@ class Model:
         if use_fp16:
             model = model.half()
 
-        if torch.cuda.is_available():
-            self.model = model.cuda()
-        else:
-            self.model = model.cpu()
+        # Force CPU usage to avoid CUDA library issues in container
+        self.model = model.cpu()
 
         del model
 
