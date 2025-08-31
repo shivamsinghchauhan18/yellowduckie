@@ -1,5 +1,7 @@
 # Safe Navigation Duckietown Project
 
+**Author:** Shivam Singh
+
 ## Description
 This is a Duckietown Safe Navigation project which aims to enhance the autonomous navigation capabilities of Duckiebots within the Duckietown environment. This project focuses on improving lane following and implementing intersection navigation and obstacle avoidance to ensure safe and efficient movement of Duckiebots in a miniature city.
 
