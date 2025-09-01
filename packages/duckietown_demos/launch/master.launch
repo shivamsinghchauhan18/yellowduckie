@@ -50,21 +50,6 @@
     <arg name="object_detection" default="false"/>
     <arg name="object_detection/AIDO_eval" default="false"/>
 
-
-    <!-- end switch args -->
-
-    <!-- Camera configuration -->
-    <arg name="camera_mock" default="false" doc="Enable mock camera for testing (disable for real robot)"/>
-    <arg name="camera" default="true" doc="Enable camera node"/>
-    
-    <!-- Mock camera for testing -->
-    <group if="$(arg camera_mock)">
-        <include file="$(find camera_mock)/launch/camera_mock_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="mock_type" value="synthetic"/>
-            <arg name="publish_rate" value="10.0"/>
-        </include>
-    </group>
     
     <!-- Real camera node -->
     <group if="$(eval arg('camera') and not arg('camera_mock'))">
