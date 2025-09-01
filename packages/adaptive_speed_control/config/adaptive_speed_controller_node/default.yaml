@@ -1,0 +1,76 @@
+# Adaptive Speed Controller Configuration
+
+# Base speed parameters
+base_linear_velocity: 0.3        # m/s, nominal speed
+base_angular_velocity: 2.0       # rad/s, nominal angular velocity
+min_linear_velocity: 0.05        # m/s, minimum allowed speed
+max_linear_velocity: 0.6         # m/s, maximum allowed speed
+
+# Environmental adaptation parameters
+visibility:
+  enable: true
+  min_visibility_threshold: 0.3   # below this, apply maximum reduction
+  max_speed_reduction: 0.7        # maximum reduction factor (30% of normal speed)
+  brightness_threshold: 50        # pixel brightness threshold for visibility assessment
+  contrast_threshold: 20          # minimum contrast for good visibility
+
+traffic_density:
+  enable: true
+  detection_distance: 2.0         # meters, distance to consider for traffic density
+  max_vehicles_threshold: 3       # number of vehicles that triggers maximum reduction
+  speed_reduction_per_vehicle: 0.15 # speed reduction factor per detected vehicle
+
+road_conditions:
+  enable: true
+  surface_quality_threshold: 0.7  # threshold for road surface quality assessment
+  weather_impact_factor: 0.8      # factor for weather-related speed reduction
+
+# Following distance control
+following_distance:
+  enable: true
+  time_based_distance: 2.0        # seconds, desired following time
+  min_distance: 0.5               # meters, minimum following distance
+  max_distance: 4.0               # meters, maximum following distance
+  speed_reduction_factor: 0.5     # factor to reduce speed when too close
+
+# Intersection handling
+intersection:
+  approach_distance: 1.0          # meters, distance to start slowing for intersection
+  approach_speed: 0.1             # m/s, speed when approaching intersection
+  stop_line_distance: 0.5         # meters, distance from stop line to stop
+  clearance_time: 2.0             # seconds, time to wait at intersection
+
+# Smooth acceleration profiles
+acceleration:
+  max_acceleration: 0.3           # m/s², maximum acceleration
+  max_deceleration: 0.5           # m/s², maximum deceleration
+  max_jerk: 0.5                   # m/s³, maximum jerk (rate of acceleration change)
+  comfort_factor: 0.8             # factor for comfortable acceleration
+
+# Emergency braking
+emergency_braking:
+  enable: true
+  trigger_distance: 0.3           # meters, distance to trigger emergency braking
+  max_deceleration: 1.0           # m/s², maximum emergency deceleration
+  reaction_time: 0.1              # seconds, system reaction time
+
+# Safety integration
+safety_integration:
+  enable: true
+  collision_risk_threshold: 0.7   # threshold for collision risk response
+  safety_margin_factor: 0.8       # factor for safety margin enforcement
+  override_timeout: 1.0           # seconds, timeout for safety overrides
+
+# Control parameters
+control:
+  update_rate: 20                 # Hz, control loop frequency
+  command_timeout: 0.5            # seconds, timeout for input commands
+  smoothing_window: 5             # number of samples for speed smoothing
+  prediction_horizon: 1.0         # seconds, prediction horizon for speed planning
+
+# Logging and diagnostics
+logging:
+  enable_debug: false
+  log_speed_changes: true
+  log_constraint_violations: true
+  performance_monitoring: true
