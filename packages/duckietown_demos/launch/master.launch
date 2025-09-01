@@ -167,7 +167,7 @@
             <remap from="lane_controller_node/obstacle_distance_reading" to="/$(arg veh)/vehicle_filter_node/virtual_stop_line"/>
             <remap from="lane_controller_node/stop_line_reading" to="/$(arg veh)/stop_line_filter_node/stop_line_reading" />
             <remap from="wheels_driver_node/radius_limit" to="/$(arg veh)/lane_controller_node/radius_limit" />
-			<remap from="lane_controller_node/car_cmd" to="/$(arg veh)/joy_mapper_node/car_cmd" />
+			<!-- lane_controller_node/car_cmd goes directly to car_cmd_switch_node -->
             <!-- <remap from="lane_controller_node/set_pattern" to="/$(arg veh)/led_emitter_node/set_pattern"/> -->
             <include file="$(find lane_control)/launch/lane_controller_node.launch">
                 <arg name="veh" value="$(arg veh)"/>
