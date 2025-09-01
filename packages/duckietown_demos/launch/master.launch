@@ -138,7 +138,7 @@
         <group if="$(arg /lane_following/lane_filter)">
             <remap from="lane_filter_node/segment_list" to="/$(arg veh)/ground_projection_node/lineseglist_out"/>
             <remap from="lane_filter_node/car_cmd" to="/$(arg veh)/car_cmd_switch_node/cmd"/>
-            <!-- <remap from="lane_filter_node/fsm_mode" to="/$(arg veh)/fsm_node/mode" /> -->
+            <remap from="lane_filter_node/fsm_mode" to="/$(arg veh)/fsm_node/mode" />
             <remap from="lane_filter_node/left_wheel_encoder_node/tick" to="/$(arg veh)/left_wheel_encoder_node/tick"/>
             <remap from="lane_filter_node/right_wheel_encoder_node/tick" to="/$(arg veh)/right_wheel_encoder_node/tick"/>
 	        <!--<remap from="lane_filter_node/seglist_filtered" to="/$(arg veh)/lane_controller_node/seglist_filtered" />-->
@@ -163,7 +163,7 @@
         <group if="$(arg /lane_following/lane_controller)">
             <remap from="lane_controller_node/lane_pose" to="/$(arg veh)/lane_filter_node/lane_pose"/>
             <remap from="lane_controller_node/wheels_cmd" to="/$(arg veh)/wheels_driver_node/wheels_cmd" />
-            <!-- <remap from="lane_controller_node/fsm_mode" to="/$(arg veh)/fsm_node/mode" /> -->
+            <remap from="lane_controller_node/fsm_mode" to="/$(arg veh)/fsm_node/mode" />
             <remap from="lane_controller_node/obstacle_distance_reading" to="/$(arg veh)/vehicle_filter_node/virtual_stop_line"/>
             <remap from="lane_controller_node/stop_line_reading" to="/$(arg veh)/stop_line_filter_node/stop_line_reading" />
             <remap from="wheels_driver_node/radius_limit" to="/$(arg veh)/lane_controller_node/radius_limit" />
@@ -245,7 +245,7 @@
 	</group>
 
 	<!-- Vehicle Avoidance Filter Node -->
-	<!-- <remap from="vehicle_filter_node/mode" to="/$(arg veh)/fsm_node/mode" /> -->
+	<remap from="vehicle_filter_node/mode" to="/$(arg veh)/fsm_node/mode" />
 	<!-- <remap from="vehicle_filter_node/set_pattern" to="/$(arg veh)/led_emitter_node/set_pattern"/> -->
 	<remap from="vehicle_filter_node/camera_info" to="/$(arg veh)/camera_node/camera_info" />
 	<remap from="vehicle_filter_node/centers" to="/$(arg veh)/vehicle_detection_node/centers" />
@@ -271,5 +271,11 @@
     </group>
     <!-- End anti-instagram -->
 
+    <!-- Start FSM Node -->
+    <include file="$(find fsm)/launch/fsm_node.launch">
+        <arg name="veh" value="$(arg veh)"/>
+        <arg name="param_file_name" value="$(arg param_file_name)"/>
+    </include>
+    <!-- End FSM Node -->
 
 </launch>

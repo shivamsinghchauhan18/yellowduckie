@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>fsm</name>
+  <version>0.1.0</version>
+  <description>Finite State Machine for Duckiebot behavior coordination</description>
+
+  <maintainer email="developer@duckietown.org">Duckietown Developer</maintainer>
+  <license>GPLv3</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>duckietown_msgs</depend>
+  <depend>sensor_msgs</depend>
+
+  <export>
+  </export>
+</package>

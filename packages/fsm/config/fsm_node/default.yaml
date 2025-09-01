@@ -1,0 +1,14 @@
+# FSM Node Configuration
+initial_state: "LANE_FOLLOWING"
+
+# Available states:
+# - LANE_FOLLOWING: Autonomous lane following mode
+# - JOYSTICK_CONTROL: Manual joystick control mode  
+# - SAFE_JOYSTICK_CONTROL: Safe manual control with collision avoidance
+# - INTERSECTION_COORDINATION: Intersection navigation mode
+# - PARKING: Parking mode
+# - EMERGENCY_STOP: Emergency stop mode
+
+# State transition settings
+auto_transition_enabled: true
+joystick_timeout: 5.0  # seconds of inactivity before returning to lane following
