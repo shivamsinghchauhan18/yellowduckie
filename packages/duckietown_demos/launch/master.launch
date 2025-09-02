@@ -421,47 +421,12 @@
     </group>
 
     <!-- Enhanced Object Detection Integration -->
-    <group if="$(eval arg('object_detection') and arg('enhanced_perception_system'))">
-        <!-- Enhanced Object Detection Node -->
-        <node name="enhanced_object_detection_node" 
-              pkg="object_detection" 
-              type="enhanced_object_detection_node.py" 
-              output="screen"
-              ns="$(arg veh)"
-              required="false">
-            
-            <remap from="~image/compressed" to="/$(arg veh)/camera_node/image/compressed"/>
-            <remap from="~detections" to="/$(arg veh)/enhanced_object_detection_node/detections"/>
-            
-        </node>
-    </group>
+    <!-- Note: Enhanced object detection is launched via enhanced_perception_system.launch -->
+    <!-- when enhanced_perception_system is enabled. No separate launch needed here. -->
 
     <!-- Safety Command Integration - Override standard car_cmd routing -->
-    <group if="$(arg advanced_safety_system)">
-        <!-- Remap the final car command through safety arbiter -->
-        <node name="car_cmd_safety_router" 
-              pkg="safety_system" 
-              type="safety_command_arbiter_node.py" 
-              output="screen"
-              ns="$(arg veh)"
-              required="true">
-            
-            <!-- Input command sources -->
-            <remap from="~lane_controller_cmd" to="/$(arg veh)/lane_controller_node/car_cmd" />
-            <remap from="~adaptive_speed_cmd" to="/$(arg veh)/adaptive_speed_controller_node/car_cmd" />
-            <remap from="~lane_change_cmd" to="/$(arg veh)/lane_change_controller_node/car_cmd_override" />
-            <remap from="~safety_override" to="/$(arg veh)/emergency_stop_system_node/safety_override" />
-            
-            <!-- Safety status inputs -->
-            <remap from="~safety_status" to="/$(arg veh)/safety_fusion_manager_node/safety_status" />
-            <remap from="~collision_risk" to="/$(arg veh)/collision_detection_manager_node/collision_risk" />
-            <remap from="~lane_change_status" to="/$(arg veh)/lane_change_controller_node/lane_change_status" />
-            
-            <!-- Final output command - replaces direct lane controller output -->
-            <remap from="~car_cmd" to="/$(arg veh)/car_cmd_switch_node/cmd" />
-            
-        </node>
-    </group>
+    <!-- Note: Safety command arbiter is launched via safety_system.launch -->
+    <!-- when advanced_safety_system is enabled. No separate launch needed here. -->
 
     <!-- System Health and Diagnostics -->
     <group if="$(arg safety_monitoring)">
@@ -486,20 +451,7 @@
     </group>
 
     <!-- Advanced Visualization (if enabled) -->
-    <group if="$(eval arg('visualization') and arg('enhanced_perception_system'))">
-        <!-- Trajectory Visualization -->
-        <node name="trajectory_visualizer" 
-              pkg="predictive_perception" 
-              type="trajectory_visualizer.py" 
-              output="screen"
-              ns="$(arg veh)"
-              required="false">
-            
-            <remap from="~predicted_trajectories" to="/$(arg veh)/predictive_perception_manager_node/predicted_trajectories" />
-            <remap from="~scene_analysis" to="/$(arg veh)/scene_understanding_module_node/scene_analysis" />
-            <remap from="~visualization_markers" to="/$(arg veh)/trajectory_visualizer/markers" />
-            
-        </node>
-    </group>
+    <!-- Note: Trajectory visualization is handled within the predictive perception nodes -->
+    <!-- Additional visualization tools can be added here as separate executable nodes -->
 
 </launch>
