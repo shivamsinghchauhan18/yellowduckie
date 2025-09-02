@@ -9,7 +9,9 @@
     <arg name="res_w" default="640" doc="Camera resolution width" />
     <arg name="res_h" default="480" doc="Camera resolution height" />
     <arg name="exposure_mode" default="auto" doc="Camera exposure mode" />
-    <arg name="camera_type" default="auto" doc="Camera type: auto, pi, usb, or custom" />
+    <arg name="camera_type" default="auto" doc="Camera type: auto, pi, usb, jetson_csi, or custom" />
+    <arg name="flip_method" default="0" doc="Jetson nvvidconv flip-method (0..7)" />
+    <arg name="sensor_mode" default="" doc="Jetson nvarguscamerasrc sensor-mode (empty for default)" />
     
     <group ns="$(arg veh)">
         <!-- Auto-detect and launch appropriate camera node -->
@@ -23,6 +25,8 @@
             <param name="exposure_mode" value="$(arg exposure_mode)" />
             <param name="camera_type" value="$(arg camera_type)" />
             <param name="veh_name" value="$(arg veh)" />
+            <param name="flip_method" value="$(arg flip_method)" />
+            <param name="sensor_mode" value="$(arg sensor_mode)" />
         </node>
     </group>
 </launch>

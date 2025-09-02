@@ -29,6 +29,7 @@
         <!-- Safety Fusion Manager Node -->
         <node name="safety_fusion_manager_node" pkg="safety_system" type="safety_fusion_manager_node.py" output="screen">
             <rosparam command="load" file="$(find safety_system)/config/safety_system_node/$(arg param_file_name).yaml"/>
+            <param name="veh" value="$(arg veh)"/>
             <remap from="~emergency_status" to="/$(arg veh)/emergency_stop_system_node/emergency_status"/>
             <remap from="~collision_risk" to="/$(arg veh)/collision_detection_manager_node/collision_risk"/>
             <remap from="~system_health_reports" to="/$(arg veh)/system_health_reports"/>

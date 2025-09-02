@@ -7,7 +7,7 @@ from duckietown.dtros import DTROS, NodeType
 # Standard ROS messages
 from std_msgs.msg import Header, String, Float32
 from sensor_msgs.msg import Imu, CompressedImage
-from geometry_msgs.msg import Twist2DStamped
+from duckietown_msgs.msg import Twist2DStamped
 
 # Internal modules
 from predictive_perception.sensor_fusion import (

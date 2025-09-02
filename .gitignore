@@ -9,3 +9,5 @@ out
 
 # otherwise CI thinks index not clean
 *.resolved
+.tmp
+

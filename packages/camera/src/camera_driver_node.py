@@ -17,6 +17,7 @@ class CameraDriverNode(DTROS):
     Supports multiple camera types:
     - Raspberry Pi camera (via raspistill/libcamera)
     - USB cameras (via OpenCV)
+    - Jetson CSI camera (via GStreamer nvarguscamerasrc)
     - Custom camera interfaces
     """
     
@@ -30,6 +31,9 @@ class CameraDriverNode(DTROS):
         self.res_h = rospy.get_param("~res_h", 480)
         self.exposure_mode = rospy.get_param("~exposure_mode", "auto")
         self.camera_type = rospy.get_param("~camera_type", "auto")
+    # Optional Jetson-specific params
+        self.flip_method = rospy.get_param("~flip_method", 0)  # Jetson nvvidconv flip-method
+        self.sensor_mode = rospy.get_param("~sensor_mode", None)  # Jetson nvarguscamerasrc sensor-mode
         
         # Initialize components
         self.bridge = CvBridge()
@@ -54,6 +58,10 @@ class CameraDriverNode(DTROS):
         """Auto-detect available camera type."""
         self.loginfo("Auto-detecting camera type...")
         
+        # Check for Jetson CSI first (to avoid mis-detecting as USB)
+        if self.check_jetson_csi():
+            return "jetson_csi"
+        
         # Check for Raspberry Pi camera
         if self.check_pi_camera():
             return "pi"
@@ -64,6 +72,28 @@ class CameraDriverNode(DTROS):
         
         self.logwarn("No camera detected")
         return None
+
+    def check_jetson_csi(self):
+        """Heuristics to detect a Jetson platform with CSI camera support."""
+        try:
+            model_path = "/proc/device-tree/model"
+            if os.path.exists(model_path):
+                with open(model_path, 'r') as f:
+                    model = f.read().lower()
+                if "nvidia" in model or "jetson" in model or "tegra" in model:
+                    # nvargus-daemon is the CSI camera service; presence is a strong signal
+                    try:
+                        result = subprocess.run(["pgrep", "-x", "nvargus-daemon"], capture_output=True)
+                        if result.returncode == 0:
+                            self.loginfo("Detected Jetson platform with nvargus-daemon running")
+                            return True
+                    except Exception:
+                        # Even if pgrep fails, being on Jetson is indicative
+                        self.loginfo("Detected Jetson platform (no pgrep)")
+                        return True
+        except Exception:
+            pass
+        return False
     
     def check_pi_camera(self):
         """Check if Raspberry Pi camera is available."""
@@ -133,6 +163,8 @@ class CameraDriverNode(DTROS):
             self.camera = self.initialize_pi_camera()
         elif self.camera_type == "usb":
             self.camera = self.initialize_usb_camera()
+        elif self.camera_type == "jetson_csi":
+            self.camera = self.initialize_jetson_csi_camera()
         else:
             self.logerr(f"Unsupported camera type: {self.camera_type}")
     
@@ -158,6 +190,39 @@ class CameraDriverNode(DTROS):
             self.logwarn("OpenCV camera initialization failed")
             return None
             
+    def initialize_jetson_csi_camera(self):
+        """Initialize Jetson CSI camera via GStreamer (nvarguscamerasrc)."""
+        try:
+            # Build nvarguscamerasrc pipeline
+            sensor_mode_part = f" sensor-mode={int(self.sensor_mode)}" if self.sensor_mode is not None else ""
+            gst_pipeline = (
+                f"nvarguscamerasrc{sensor_mode_part} ! "
+                f"video/x-raw(memory:NVMM), width=(int){self.res_w}, height=(int){self.res_h}, framerate=(fraction){self.framerate}/1 ! "
+                f"nvvidconv flip-method={int(self.flip_method)} ! "
+                "video/x-raw, format=(string)BGRx ! "
+                "videoconvert ! "
+                "video/x-raw, format=(string)BGR ! "
+                "appsink drop=1 max-buffers=1"
+            )
+
+            self.loginfo(f"Using GStreamer pipeline: {gst_pipeline}")
+            cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+            if cap.isOpened():
+                # Test capture
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    self.loginfo("Jetson CSI camera initialized via GStreamer")
+                    return cap
+                else:
+                    cap.release()
+                    self.logwarn("GStreamer opened but failed to read a frame")
+            else:
+                self.logerr("Failed to open GStreamer pipeline. Ensure OpenCV is built with GStreamer support.")
+            return None
+        except Exception as e:
+            self.logerr(f"Failed to initialize Jetson CSI camera: {e}")
+            return None
+
         except Exception as e:
             self.logerr(f"Failed to initialize Pi camera: {e}")
             return None

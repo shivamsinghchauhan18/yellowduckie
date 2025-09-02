@@ -64,6 +64,15 @@
     <arg name="/camera/raw" default="false"/>
     <arg name="/camera/rect" default="false"/>
 
+    <!-- Camera configuration (forwarded to camera_node.launch) -->
+    <arg name="camera_type" default="auto" doc="auto, pi, usb, jetson_csi"/>
+    <arg name="framerate" default="30" doc="Camera frame rate (Hz)"/>
+    <arg name="res_w" default="640" doc="Camera resolution width"/>
+    <arg name="res_h" default="480" doc="Camera resolution height"/>
+    <arg name="exposure_mode" default="auto" doc="Camera exposure mode"/>
+    <arg name="flip_method" default="0" doc="Jetson: nvvidconv flip-method (0..7)"/>
+    <arg name="sensor_mode" default="" doc="Jetson: nvarguscamerasrc sensor-mode (empty for default)"/>
+
     <!-- Enable anti-instagram for better color correction in varying lighting -->
     <arg name="anti_instagram" default="true"/>
 
@@ -118,6 +127,26 @@
         <include file="$(find camera)/launch/camera_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="config" value="$(arg config)"/>
+            <arg name="param_file_name" value="$(arg param_file_name)"/>
+            <arg name="camera_type" value="$(arg camera_type)"/>
+            <arg name="framerate" value="$(arg framerate)"/>
+            <arg name="res_w" value="$(arg res_w)"/>
+            <arg name="res_h" value="$(arg res_h)"/>
+            <arg name="exposure_mode" value="$(arg exposure_mode)"/>
+            <arg name="flip_method" value="$(arg flip_method)"/>
+            <arg name="sensor_mode" value="$(arg sensor_mode)"/>
+        </include>
+    </group>
+
+    <!-- Mock camera node -->
+    <group if="$(eval arg('camera') and arg('camera_mock'))">
+        <include file="$(find camera_mock)/launch/camera_mock_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="config" value="$(arg config)"/>
+            <arg name="param_file_name" value="$(arg param_file_name)"/>
+            <arg name="publish_rate" value="$(arg framerate)"/>
+            <arg name="image_width" value="$(arg res_w)"/>
+            <arg name="image_height" value="$(arg res_h)"/>
         </include>
     </group>
 
@@ -437,16 +466,14 @@
               output="screen"
               ns="$(arg veh)"
               required="false">
-            
-            <!-- Monitor system components -->
-            <remap from="~camera_health" to="/$(arg veh)/camera_node/health" />
+            <param name="config_file" value="$(find safety_system)/config/safety_system_node/$(arg param_file_name).yaml" />
+            <!-- Monitor topics -->
+            <remap from="~camera_health" to="/$(arg veh)/lane_filter_node/health" />
             <remap from="~perception_health" to="/$(arg veh)/lane_filter_node/health" />
             <remap from="~control_health" to="/$(arg veh)/lane_controller_node/health" />
             <remap from="~safety_health" to="/$(arg veh)/safety_fusion_manager_node/system_health_summary" />
-            
             <!-- Output system status -->
             <remap from="~system_status" to="/$(arg veh)/system_health_monitor/status" />
-            
         </node>
     </group>
 

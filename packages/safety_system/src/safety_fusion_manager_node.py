@@ -58,6 +58,9 @@ class SafetyFusionManagerNode(DTROS):
             node_type=NodeType.CONTROL
         )
         
+    # Vehicle namespace parameter for absolute topic subscriptions
+        self.veh = rospy.get_param("~veh", rospy.get_namespace().strip("/"))
+        
         # Parameters
         self.fusion_update_rate = DTParam(
             "~fusion_update_rate",
@@ -142,35 +145,37 @@ class SafetyFusionManagerNode(DTROS):
         
         # Subscribers
         self.sub_emergency_status = rospy.Subscriber(
-            "~emergency_status",
+            f"/{self.veh}/emergency_stop_system_node/emergency_status",
             String,
             self.cb_emergency_status,
             queue_size=1
         )
         
         self.sub_collision_risk = rospy.Subscriber(
-            "~collision_risk",
+            f"/{self.veh}/collision_detection_manager_node/collision_risk",
             String,
             self.cb_collision_risk,
             queue_size=1
         )
         
         self.sub_system_health_reports = rospy.Subscriber(
-            "~system_health_reports",
+            f"/{self.veh}/system_health_reports",
             String,
             self.cb_system_health_reports,
             queue_size=5
         )
         
+        # Sensor health from perception node
         self.sub_sensor_health = rospy.Subscriber(
-            "~sensor_health",
+            f"/{self.veh}/perception_data_fusion_node/sensor_health",
             String,
             self.cb_sensor_health,
             queue_size=1
         )
         
+        # Actuator health
         self.sub_actuator_health = rospy.Subscriber(
-            "~actuator_health",
+            f"/{self.veh}/actuator_health",
             String,
             self.cb_actuator_health,
             queue_size=1
