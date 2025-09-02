@@ -1,0 +1,162 @@
+// Graphviz DOT representation of the Duckietown Safe Navigation system
+// Render with: dot -Tpng system_graph.dot -o system_graph.png
+// Namespace: replace <veh> with your VEHICLE_NAME
+
+digraph ROS {
+  rankdir=LR;
+  splines=true;
+  node [shape=box, fontsize=10];
+  edge [fontsize=9];
+
+  subgraph cluster_camera {
+    label="packages/camera"; style=filled; color="#eef7ff"; penwidth=1.2; fontcolor="#0b3d91";
+    CAM [label="/<veh>/camera_node\n(camera_driver_node.py)"];
+    CAM_IMG [shape=ellipse, label="~image/compressed"];
+    CAM_CI [shape=ellipse, label="~camera_info"];
+    CAM -> CAM_IMG [label="publishes"];
+    CAM -> CAM_CI [label="publishes"];
+  }
+
+  subgraph cluster_image_proc {
+    label="packages/image_processing (optional)"; style=filled; color="#eef7ff"; fontcolor="#0b3d91";
+    DEC [label="/<veh>/decoder_node"];
+    DEC_IN [shape=ellipse, label="~image_in"];
+    DEC_OUT [shape=ellipse, label="~image_out (raw)"];
+    DEC_IN -> DEC [style=dashed, label="optional"]; DEC -> DEC_OUT [style=dashed, label="publishes"];
+
+    REC [label="/<veh>/rectifier_node"];
+    REC_IN [shape=ellipse, label="~image_in"];
+    REC_CI_IN [shape=ellipse, label="~camera_info_in"];
+    REC_IMG_OUT [shape=ellipse, label="~image_out (rect)"];
+    REC_CI_OUT [shape=ellipse, label="~camera_info_out"];
+    REC_IN -> REC [style=dashed]; REC_CI_IN -> REC [style=dashed]; REC -> REC_IMG_OUT [style=dashed]; REC -> REC_CI_OUT [style=dashed];
+  }
+
+  subgraph cluster_ai {
+    label="packages/anti_instagram (optional)"; style=filled; color="#eef7ff"; fontcolor="#0b3d91";
+    AI [label="/<veh>/anti_instagram_node"];
+    AI_THR [shape=ellipse, label="~thresholds"];
+    AI -> AI_THR [style=dashed, label="publishes"];
+  }
+
+  subgraph cluster_ld {
+    label="packages/line_detector"; style=filled; color="#eef7ff"; fontcolor="#0b3d91";
+    LD [label="/<veh>/line_detector_node\n(line_detector_node.py)"];
+    LD_IMG [shape=ellipse, label="~image/compressed"];
+    LD_THR [shape=ellipse, label="~thresholds"];
+    LD_SEGS [shape=ellipse, label="~segment_list"];
+  }
+
+  subgraph cluster_gp {
+    label="packages/ground_projection"; style=filled; color="#eef7ff"; fontcolor="#0b3d91";
+    GP [label="/<veh>/ground_projection_node\n(ground_projection_node.py)"];
+    GP_IN [shape=ellipse, label="~lineseglist_in"];
+    GP_CI [shape=ellipse, label="~camera_info"];
+    GP_OUT [shape=ellipse, label="~lineseglist_out"];
+  }
+
+  subgraph cluster_lf {
+    label="packages/lane_filter"; style=filled; color="#eef7ff"; fontcolor="#0b3d91";
+    LF [label="/<veh>/lane_filter_node\n(lane_filter_node.py)"];
+    LF_IN [shape=ellipse, label="~segment_list"];
+    LF_POSE [shape=ellipse, label="~lane_pose"];
+  }
+
+  subgraph cluster_slf {
+    label="packages/stop_line_filter"; style=filled; color="#eef7ff"; fontcolor="#0b3d91";
+    SLF [label="/<veh>/stop_line_filter_node\n(stop_line_filter_node.py)"];
+    SLF_IN_SEGS [shape=ellipse, label="~segment_list"];
+    SLF_IN_POSE [shape=ellipse, label="~lane_pose"];
+    SLF_OUT [shape=ellipse, label="~stop_line_reading"];
+  }
+
+  subgraph cluster_vehicle {
+    label="packages/vehicle_detection"; style=filled; color="#eef7ff"; fontcolor="#0b3d91";
+    VD [label="/<veh>/vehicle_detection_node\n(vehicle_detection_node.py)"];
+    VD_IMG [shape=ellipse, label="~image"];
+    VD_CENTERS [shape=ellipse, label="~centers"];
+
+    VF [label="/<veh>/vehicle_filter_node\n(vehicle_filter_node.py)"];
+    VF_CENTERS [shape=ellipse, label="~centers"];
+    VF_CI [shape=ellipse, label="~camera_info"];
+    VF_MODE [shape=ellipse, label="~mode (FSMState)"];
+    VF_VSL [shape=ellipse, label="~virtual_stop_line"];
+  }
+
+  subgraph cluster_april {
+    label="packages/apriltag"; style=filled; color="#eef7ff"; fontcolor="#0b3d91";
+    ATD [label="/<veh>/apriltag_detector_node\n(apriltag_detector_node.py)"];
+    ATD_IMG [shape=ellipse, label="~image"];
+    ATD_CI [shape=ellipse, label="~camera_info"];
+    ATD_DET [shape=ellipse, label="~detections"];
+
+    ATP [label="/<veh>/apriltag_postprocessing_node\n(apriltag_postprocessing_node.py)"];
+    ATP_IN [shape=ellipse, label="~detections"];
+    ATP_OUT [shape=ellipse, label="~apriltags_out"];
+    ATP_PARK [shape=ellipse, label="~apriltags_parking"];
+    ATP_INT [shape=ellipse, label="~apriltags_intersection"];
+  }
+
+  subgraph cluster_lc {
+    label="packages/lane_control"; style=filled; color="#eef7ff"; fontcolor="#0b3d91";
+    LC [label="/<veh>/lane_controller_node\n(lane_controller_node.py)"];
+    LC_IN_POSE [shape=ellipse, label="~lane_pose"];
+    LC_IN_STOP [shape=ellipse, label="~stop_line_reading"];
+    LC_IN_OBS [shape=ellipse, label="~obstacle_distance_reading"];
+    LC_IN_ATD [shape=ellipse, label="~apriltag_detections"];
+    LC_WCE [shape=ellipse, label="~wheels_cmd"];
+    LC_CMD [shape=ellipse, label="~car_cmd"];
+  }
+
+  subgraph cluster_fsm {
+    label="packages/fsm & led_*"; style=filled; color="#eef7ff"; fontcolor="#0b3d91";
+    FSM [label="/<veh>/fsm_node\n(fsm_node.py)"];
+    FSM_MODE [shape=ellipse, label="~mode (FSMState)"];
+    LED [label="/<veh>/led_emitter_node\n(svc set_pattern)"];
+  }
+
+  subgraph cluster_objdet {
+    label="packages/object_detection"; style=filled; color="#eef7ff"; fontcolor="#0b3d91";
+    OBJ [label="/<veh>/object_detection_node\n(object_detection_node.py)"];
+    OBJ_CMD [shape=ellipse, label="/<veh>/car_cmd_switch_node/cmd"];
+  }
+
+  subgraph cluster_external {
+    label="External actuation"; style=dashed; color="#cccccc";
+    CARCMD [shape=ellipse, label="/<veh>/car_cmd_switch_node/cmd"];
+    WD [label="/<veh>/wheels_driver_node"];
+    WD_CMD [shape=ellipse, label="/<veh>/wheels_cmd"];
+    WD_EXEC [shape=ellipse, label="/<veh>/wheels_cmd_executed"];
+  }
+
+  // Wiring
+  // Camera to consumers
+  CAM_IMG -> LD_IMG; CAM_CI -> GP_CI; CAM_IMG -> ATD_IMG; CAM_CI -> ATD_CI; CAM_IMG -> VD_IMG; CAM_CI -> VF_CI;
+
+  // Anti-instagram to LD
+  AI_THR -> LD_THR [style=dashed];
+
+  // LD to GP
+  LD_SEGS -> GP_IN;
+
+  // GP to LF and SLF
+  GP_OUT -> LF_IN; GP_OUT -> SLF_IN_SEGS;
+
+  // LF to LC and SLF to LC
+  LF_POSE -> SLF_IN_POSE; LF_POSE -> LC_IN_POSE; SLF_OUT -> LC_IN_STOP;
+
+  // Vehicle detection
+  VD_CENTERS -> VF_CENTERS; VF_VSL -> LC_IN_OBS;
+
+  // AprilTags
+  ATD_DET -> ATP_IN; ATD_DET -> LC_IN_ATD;
+
+  // Lane controller outputs
+  LC_CMD -> CARCMD; OBJ -> OBJ_CMD; OBJ_CMD -> CARCMD;
+
+  // Actuation loop
+  CARCMD -> WD_CMD; WD_CMD -> WD; WD -> WD_EXEC; WD_EXEC -> LC_WCE;
+
+  // FSM influence
+  FSM -> FSM_MODE; FSM_MODE -> LC; FSM_MODE -> LF; FSM_MODE -> VF;
+}

@@ -1,0 +1,402 @@
+// Comprehensive Duckietown Safe Navigation Project Architecture
+// Advanced Safety & Navigation System with Predictive Capabilities
+// Author: Shivam Singh
+// Render with: dot -Tpng project_architecture_detailed.dot -o project_architecture_detailed.png
+// Or: neato -Tsvg project_architecture_detailed.dot -o project_architecture_detailed.svg
+
+digraph DuckietownSafeNavigation {
+    // Graph properties
+    rankdir=TB;
+    splines=true;
+    overlap=false;
+    concentrate=true;
+    compound=true;
+    fontname="Arial";
+    fontsize=12;
+    
+    // Node styles
+    node [fontname="Arial", fontsize=10, style=filled];
+    edge [fontname="Arial", fontsize=8];
+    
+    // Color scheme
+    subgraph cluster_legend {
+        label="Legend";
+        style=filled;
+        color="#f0f0f0";
+        fontsize=10;
+        
+        legend_sensor [label="Sensor Layer", shape=box, fillcolor="#e1f5fe", color="#0277bd"];
+        legend_perception [label="Perception Layer", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        legend_safety [label="Safety Layer", shape=box, fillcolor="#ffebee", color="#c62828"];
+        legend_decision [label="Decision Layer", shape=box, fillcolor="#e8f5e8", color="#2e7d32"];
+        legend_control [label="Control Layer", shape=box, fillcolor="#fff3e0", color="#ef6c00"];
+        legend_monitoring [label="Monitoring Layer", shape=box, fillcolor="#fafafa", color="#424242"];
+        legend_communication [label="Communication", shape=ellipse, fillcolor="#f1f8e9", color="#558b2f"];
+        legend_data [label="Data Flow", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+    }
+    
+    // ========== SENSOR LAYER ==========
+    subgraph cluster_sensors {
+        label="🔍 SENSOR LAYER";
+        style=filled;
+        color="#e1f5fe";
+        fontcolor="#0277bd";
+        fontsize=14;
+        
+        // Hardware sensors
+        camera_node [label="Camera Node\n(camera_driver_node.py)\n📷 Image Capture\n🎥 Video Stream", shape=box, fillcolor="#e1f5fe", color="#0277bd"];
+        camera_mock [label="Camera Mock\n(camera_mock_node.py)\n🎭 Simulation Mode\n📸 Test Images", shape=box, fillcolor="#e1f5fe", color="#0277bd"];
+        imu_sensors [label="IMU Sensors\n⚡ Accelerometer\n🧭 Gyroscope\n🧲 Magnetometer", shape=box, fillcolor="#e1f5fe", color="#0277bd"];
+        wheel_encoders [label="Wheel Encoders\n⚙️ Speed Measurement\n📏 Distance Tracking", shape=box, fillcolor="#e1f5fe", color="#0277bd"];
+        
+        // Sensor data topics
+        image_compressed [label="image/compressed\n📊 Compressed Images", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        camera_info [label="camera_info\n📋 Camera Parameters", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        imu_data [label="imu/data\n📈 Motion Data", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        encoder_data [label="encoder_ticks\n🔢 Wheel Rotation", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+    }
+    
+    // ========== PERCEPTION LAYER ==========
+    subgraph cluster_perception {
+        label="👁️ PERCEPTION LAYER";
+        style=filled;
+        color="#f3e5f5";
+        fontcolor="#7b1fa2";
+        fontsize=14;
+        
+        // Core perception
+        line_detector [label="Line Detector\n(line_detector_node.py)\n🛣️ Lane Detection\n📏 Segment Extraction", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        ground_projection [label="Ground Projection\n(ground_projection_node.py)\n🌍 3D Mapping\n📐 Coordinate Transform", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        lane_filter [label="Lane Filter\n(lane_filter_node.py)\n🎯 Position Estimation\n📊 Pose Calculation", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        
+        // Object detection
+        object_detection [label="Enhanced Object Detection\n(enhanced_object_detection_node.py)\n🤖 Neural Network\n🎯 Multi-class Detection", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        vehicle_detection [label="Vehicle Detection\n(vehicle_detection_node.py)\n🚗 Vehicle Recognition\n📍 Position Tracking", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        apriltag_detector [label="AprilTag Detector\n(apriltag_detector_node.py)\n🏷️ Sign Recognition\n📍 Landmark Detection", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        
+        // Advanced perception (NEW)
+        predictive_perception [label="🆕 Predictive Perception Manager\n(predictive_perception_manager_node.py)\n🔮 Trajectory Prediction\n📊 Multi-Object Tracking\n🎯 Kalman Filtering", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        scene_understanding [label="🆕 Scene Understanding Module\n(scene_understanding_module_node.py)\n🧠 Context Analysis\n🌐 Environment Assessment\n📋 Scenario Classification", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        sensor_fusion [label="🆕 Perception Data Fusion\n(perception_data_fusion_node.py)\n🔗 Multi-Modal Fusion\n📊 Confidence Estimation\n⚖️ Data Arbitration", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        
+        // Image processing pipeline
+        anti_instagram [label="Anti-Instagram\n(anti_instagram_node.py)\n🎨 Color Correction\n💡 Lighting Adaptation", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        image_processing [label="Image Processing\n📸 Rectification\n🔧 Preprocessing", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        
+        // Perception data
+        segment_list [label="segment_list\n📏 Lane Segments", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        lane_pose [label="lane_pose\n📍 Vehicle Position", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        object_detections [label="object_detections\n🎯 Detected Objects", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        predicted_trajectories [label="predicted_trajectories\n🔮 Future Paths", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        scene_analysis [label="scene_analysis\n🧠 Scene Context", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+    }
+    
+    // ========== SAFETY LAYER (NEW) ==========
+    subgraph cluster_safety {
+        label="🛡️ ADVANCED SAFETY LAYER";
+        style=filled;
+        color="#ffebee";
+        fontcolor="#c62828";
+        fontsize=14;
+        
+        // Core safety systems
+        emergency_stop [label="🆕 Emergency Stop System\n(emergency_stop_system_node.py)\n🚨 Immediate Stop\n⚡ Hardware Override\n⏱️ <100ms Response", shape=box, fillcolor="#ffebee", color="#c62828"];
+        collision_detection [label="🆕 Collision Detection Manager\n(collision_detection_manager_node.py)\n💥 Risk Assessment\n📊 Multi-Layer Detection\n⚠️ Threat Classification", shape=box, fillcolor="#ffebee", color="#c62828"];
+        safety_fusion [label="🆕 Safety Fusion Manager\n(safety_fusion_manager_node.py)\n🔗 Safety Coordination\n⚖️ Decision Arbitration\n📊 Health Monitoring", shape=box, fillcolor="#ffebee", color="#c62828"];
+        safety_arbiter [label="🆕 Safety Command Arbiter\n(safety_command_arbiter_node.py)\n🎛️ Command Override\n⚖️ Priority Management\n🛡️ Safety Enforcement", shape=box, fillcolor="#ffebee", color="#c62828"];
+        
+        // Configuration and validation
+        safety_config [label="🆕 Safety Config Validator\n(safety_config_validator.py)\n✅ Parameter Validation\n🔧 Configuration Check\n📋 Safety Standards", shape=box, fillcolor="#ffebee", color="#c62828"];
+        dynamic_params [label="🆕 Dynamic Parameter Manager\n(dynamic_parameter_manager.py)\n⚙️ Runtime Tuning\n📊 Adaptive Parameters\n🔄 Real-time Updates", shape=box, fillcolor="#ffebee", color="#c62828"];
+        
+        // Safety data
+        collision_risk [label="collision_risk\n⚠️ Risk Levels", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        emergency_status [label="emergency_status\n🚨 System State", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        safety_override [label="safety_override\n🛡️ Safety Commands", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+    }
+    
+    // ========== DECISION LAYER ==========
+    subgraph cluster_decision {
+        label="🧠 INTELLIGENT DECISION LAYER";
+        style=filled;
+        color="#e8f5e8";
+        fontcolor="#2e7d32";
+        fontsize=14;
+        
+        // Core control
+        lane_controller [label="Lane Controller\n(lane_controller_node.py)\n🛣️ Lane Following\n🎯 Path Tracking\n⚖️ PID Control", shape=box, fillcolor="#e8f5e8", color="#2e7d32"];
+        stop_line_filter [label="Stop Line Filter\n(stop_line_filter_node.py)\n🛑 Stop Detection\n📏 Distance Calculation\n⚠️ Intersection Logic", shape=box, fillcolor="#e8f5e8", color="#2e7d32"];
+        
+        // Advanced decision making (NEW)
+        adaptive_speed [label="🆕 Adaptive Speed Controller\n(adaptive_speed_controller_node.py)\n🚀 Dynamic Speed\n🌦️ Environmental Adaptation\n📊 Multi-Factor Control", shape=box, fillcolor="#e8f5e8", color="#2e7d32"];
+        lane_change_controller [label="🆕 Lane Change Controller\n🔄 Safe Lane Changes\n📊 Feasibility Analysis\n🚦 Signal Coordination", shape=box, fillcolor="#e8f5e8", color="#2e7d32"];
+        intelligent_navigation [label="🆕 Intelligent Navigation Manager\n🗺️ Path Planning\n🎯 Multi-Objective Optimization\n🚦 Traffic Rule Compliance", shape=box, fillcolor="#e8f5e8", color="#2e7d32"];
+        
+        // Supporting modules
+        acceleration_profile [label="🆕 Acceleration Profile Manager\n(acceleration_profile_manager.py)\n📈 Smooth Profiles\n⚡ Jerk Minimization\n🎯 Comfort Optimization", shape=box, fillcolor="#e8f5e8", color="#2e7d32"];
+        following_distance [label="🆕 Following Distance Controller\n(following_distance_controller.py)\n🚗 Vehicle Following\n📏 Safe Distance\n⏱️ Time-based Control", shape=box, fillcolor="#e8f5e8", color="#2e7d32"];
+        environmental_analyzer [label="🆕 Environmental Analyzer\n(environmental_analyzer.py)\n🌦️ Condition Assessment\n💡 Visibility Analysis\n📊 Risk Evaluation", shape=box, fillcolor="#e8f5e8", color="#2e7d32"];
+        
+        // Decision data
+        car_cmd [label="car_cmd\n🎛️ Control Commands", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        speed_command [label="speed_command\n🚀 Speed Control", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        lane_change_request [label="lane_change_request\n🔄 Maneuver Plans", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+    }
+    
+    // ========== CONTROL LAYER ==========
+    subgraph cluster_control {
+        label="🎛️ CONTROL & ACTUATION LAYER";
+        style=filled;
+        color="#fff3e0";
+        fontcolor="#ef6c00";
+        fontsize=14;
+        
+        // Actuation
+        wheels_driver [label="Wheels Driver\n(wheels_driver_node.py)\n⚙️ Motor Control\n📊 Encoder Feedback\n🔧 Hardware Interface", shape=box, fillcolor="#fff3e0", color="#ef6c00"];
+        
+        // LED control
+        led_emitter [label="LED Emitter\n(led_emitter_node.py)\n💡 Light Control\n🎨 Pattern Generation\n📡 Signal Display", shape=box, fillcolor="#fff3e0", color="#ef6c00"];
+        led_pattern_switch [label="LED Pattern Switch\n(led_pattern_switch_node.py)\n🔄 Pattern Selection\n🎭 State-based Switching\n🚦 Traffic Signals", shape=box, fillcolor="#fff3e0", color="#ef6c00"];
+        led_joy_mapper [label="LED Joy Mapper\n(led_joy_mapper_node.py)\n🎮 Manual Control\n🎯 Joystick Mapping\n🎨 Interactive Patterns", shape=box, fillcolor="#fff3e0", color="#ef6c00"];
+        
+        // Control data
+        wheels_cmd [label="wheels_cmd\n⚙️ Wheel Commands", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        wheels_cmd_executed [label="wheels_cmd_executed\n✅ Execution Feedback", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        led_pattern [label="led_pattern\n💡 Light Patterns", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+    }
+    
+    // ========== MONITORING LAYER (NEW) ==========
+    subgraph cluster_monitoring {
+        label="📊 SYSTEM MONITORING & DIAGNOSTICS";
+        style=filled;
+        color="#fafafa";
+        fontcolor="#424242";
+        fontsize=14;
+        
+        // Monitoring systems
+        performance_monitor [label="🆕 Performance Monitor\n(performance_monitor_node.py)\n📈 System Metrics\n⚡ Real-time Analysis\n🎯 Optimization Hints", shape=box, fillcolor="#fafafa", color="#424242"];
+        system_health [label="🆕 System Health Monitor\n🏥 Component Status\n⚠️ Failure Detection\n🔧 Diagnostic Reports", shape=box, fillcolor="#fafafa", color="#424242"];
+        data_logger [label="🆕 Data Logger\n📝 Event Recording\n💾 Data Storage\n📊 Analysis Support", shape=box, fillcolor="#fafafa", color="#424242"];
+        
+        // Monitoring data
+        system_metrics [label="system_metrics\n📊 Performance Data", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        diagnostic_info [label="diagnostic_info\n🔍 System Status", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+    }
+    
+    // ========== STATE MANAGEMENT ==========
+    subgraph cluster_fsm {
+        label="🔄 FINITE STATE MACHINE";
+        style=filled;
+        color="#f1f8e9";
+        fontcolor="#558b2f";
+        fontsize=14;
+        
+        fsm_node [label="FSM Node\n(fsm_node.py)\n🔄 State Management\n🎭 Behavior Switching\n📋 Mode Control", shape=box, fillcolor="#f1f8e9", color="#558b2f"];
+        fsm_state [label="fsm_state\n🎭 Current Mode", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+    }
+    
+    // ========== COMMUNICATION & COORDINATION ==========
+    subgraph cluster_communication {
+        label="📡 COMMUNICATION & COORDINATION";
+        style=filled;
+        color="#f1f8e9";
+        fontcolor="#558b2f";
+        fontsize=14;
+        
+        v2v_communication [label="🆕 V2V Communication\n📡 Vehicle-to-Vehicle\n🤝 Coordination Protocol\n⚠️ Emergency Alerts", shape=ellipse, fillcolor="#f1f8e9", color="#558b2f"];
+        intersection_coordinator [label="🆕 Intersection Coordinator\n🚦 Traffic Management\n🎯 Right-of-Way Logic\n⚖️ Conflict Resolution", shape=ellipse, fillcolor="#f1f8e9", color="#558b2f"];
+        
+        // Communication data
+        v2v_messages [label="v2v_messages\n📨 Inter-Vehicle Data", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+        coordination_data [label="coordination_data\n🤝 Shared Information", shape=diamond, fillcolor="#fff8e1", color="#f57f17"];
+    }
+    
+    // ========== VISUALIZATION & DEBUGGING ==========
+    subgraph cluster_visualization {
+        label="📈 VISUALIZATION & DEBUGGING";
+        style=filled;
+        color="#f3e5f5";
+        fontcolor="#7b1fa2";
+        fontsize=14;
+        
+        line_segment_visualizer [label="Line Segment Visualizer\n(line_segment_visualizer_node.py)\n📊 Lane Visualization\n🎨 Debug Display", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        lane_pose_visualizer [label="Lane Pose Visualizer\n(lane_pose_visualizer_node.py)\n📍 Position Display\n🎯 Tracking Visualization", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+        trajectory_visualizer [label="🆕 Trajectory Visualizer\n(trajectory_visualizer.py)\n🔮 Path Prediction Display\n📈 Motion Visualization", shape=box, fillcolor="#f3e5f5", color="#7b1fa2"];
+    }
+    
+    // ========== NEURAL NETWORK & AI ==========
+    subgraph cluster_ai {
+        label="🤖 NEURAL NETWORK & AI";
+        style=filled;
+        color="#e8eaf6";
+        fontcolor="#3f51b5";
+        fontsize=14;
+        
+        nn_model [label="Neural Network Model\n(model.py)\n🧠 Deep Learning\n🎯 Object Classification\n⚡ GPU Acceleration", shape=box, fillcolor="#e8eaf6", color="#3f51b5"];
+        kalman_tracker [label="🆕 Kalman Tracker\n(kalman_tracker.py)\n📊 State Estimation\n🎯 Noise Filtering\n📈 Prediction Model", shape=box, fillcolor="#e8eaf6", color="#3f51b5"];
+        multi_object_tracker [label="🆕 Multi-Object Tracker\n(multi_object_tracker.py)\n🎯 Multiple Targets\n🔗 Association Logic\n📊 Track Management", shape=box, fillcolor="#e8eaf6", color="#3f51b5"];
+        motion_models [label="🆕 Motion Models\n(motion_models.py)\n🚗 Vehicle Dynamics\n📈 Kinematic Models\n🔮 Behavior Prediction", shape=box, fillcolor="#e8eaf6", color="#3f51b5"];
+    }
+    
+    // ========== EXTERNAL INTERFACES ==========
+    subgraph cluster_external {
+        label="🌐 EXTERNAL INTERFACES";
+        style=dashed;
+        color="#e0e0e0";
+        fontcolor="#616161";
+        fontsize=14;
+        
+        joystick_input [label="Joystick Input\n🎮 Manual Control\n🎯 Teleoperation", shape=box, fillcolor="#f5f5f5", color="#616161"];
+        network_interface [label="Network Interface\n🌐 Remote Access\n📡 Data Transmission", shape=box, fillcolor="#f5f5f5", color="#616161"];
+        file_system [label="File System\n💾 Configuration Files\n📊 Log Storage", shape=box, fillcolor="#f5f5f5", color="#616161"];
+    }
+    
+    // ========== DATA FLOW CONNECTIONS ==========
+    
+    // Sensor to Perception
+    camera_node -> image_compressed;
+    camera_node -> camera_info;
+    camera_mock -> image_compressed [style=dashed, label="simulation"];
+    imu_sensors -> imu_data;
+    wheel_encoders -> encoder_data;
+    
+    image_compressed -> line_detector;
+    image_compressed -> object_detection;
+    image_compressed -> vehicle_detection;
+    image_compressed -> apriltag_detector;
+    image_compressed -> anti_instagram;
+    camera_info -> ground_projection;
+    camera_info -> apriltag_detector;
+    
+    // Perception pipeline
+    line_detector -> segment_list;
+    segment_list -> ground_projection;
+    ground_projection -> lane_filter;
+    lane_filter -> lane_pose;
+    
+    object_detection -> object_detections;
+    vehicle_detection -> object_detections;
+    apriltag_detector -> object_detections;
+    
+    // Advanced perception
+    object_detections -> predictive_perception;
+    lane_pose -> predictive_perception;
+    predictive_perception -> predicted_trajectories;
+    
+    object_detections -> scene_understanding;
+    lane_pose -> scene_understanding;
+    scene_understanding -> scene_analysis;
+    
+    object_detections -> sensor_fusion;
+    predicted_trajectories -> sensor_fusion;
+    scene_analysis -> sensor_fusion;
+    
+    // Safety system
+    object_detections -> collision_detection;
+    predicted_trajectories -> collision_detection;
+    collision_detection -> collision_risk;
+    
+    collision_risk -> emergency_stop;
+    emergency_stop -> emergency_status;
+    emergency_stop -> safety_override;
+    
+    collision_risk -> safety_fusion;
+    emergency_status -> safety_fusion;
+    safety_fusion -> safety_arbiter;
+    
+    // Decision making
+    lane_pose -> lane_controller;
+    lane_pose -> stop_line_filter;
+    segment_list -> stop_line_filter;
+    
+    lane_pose -> adaptive_speed;
+    object_detections -> adaptive_speed;
+    scene_analysis -> adaptive_speed;
+    adaptive_speed -> speed_command;
+    
+    lane_controller -> car_cmd;
+    adaptive_speed -> car_cmd;
+    
+    // Safety override
+    car_cmd -> safety_arbiter;
+    safety_override -> safety_arbiter;
+    safety_arbiter -> wheels_cmd;
+    
+    // Control
+    wheels_cmd -> wheels_driver;
+    wheels_driver -> wheels_cmd_executed;
+    wheels_cmd_executed -> lane_controller [label="feedback"];
+    
+    // LED control
+    fsm_node -> fsm_state;
+    fsm_state -> led_pattern_switch;
+    led_pattern_switch -> led_pattern;
+    led_pattern -> led_emitter;
+    joystick_input -> led_joy_mapper;
+    led_joy_mapper -> led_pattern;
+    
+    // State management
+    fsm_state -> lane_controller;
+    fsm_state -> adaptive_speed;
+    fsm_state -> safety_fusion;
+    
+    // Monitoring
+    wheels_cmd_executed -> performance_monitor;
+    collision_risk -> performance_monitor;
+    emergency_status -> performance_monitor;
+    performance_monitor -> system_metrics;
+    
+    system_metrics -> system_health;
+    system_health -> diagnostic_info;
+    
+    diagnostic_info -> data_logger;
+    system_metrics -> data_logger;
+    
+    // Communication
+    lane_pose -> v2v_communication;
+    car_cmd -> v2v_communication;
+    v2v_communication -> v2v_messages;
+    v2v_messages -> intersection_coordinator;
+    intersection_coordinator -> coordination_data;
+    coordination_data -> adaptive_speed;
+    
+    // Visualization
+    segment_list -> line_segment_visualizer;
+    lane_pose -> lane_pose_visualizer;
+    predicted_trajectories -> trajectory_visualizer;
+    
+    // AI/ML components
+    object_detections -> nn_model;
+    nn_model -> object_detections [label="enhanced"];
+    
+    object_detections -> kalman_tracker;
+    kalman_tracker -> multi_object_tracker;
+    multi_object_tracker -> predictive_perception;
+    
+    motion_models -> predictive_perception;
+    
+    // External interfaces
+    joystick_input -> fsm_node;
+    network_interface -> v2v_communication;
+    file_system -> safety_config;
+    safety_config -> dynamic_params;
+    dynamic_params -> adaptive_speed;
+    
+    // Advanced features integration
+    following_distance -> adaptive_speed;
+    acceleration_profile -> adaptive_speed;
+    environmental_analyzer -> adaptive_speed;
+    
+    lane_change_request -> lane_change_controller;
+    lane_change_controller -> intelligent_navigation;
+    intelligent_navigation -> adaptive_speed;
+    
+    // Cross-layer connections for advanced features
+    scene_analysis -> intelligent_navigation [color="#ff6b6b", penwidth=2, label="context"];
+    predicted_trajectories -> lane_change_controller [color="#4ecdc4", penwidth=2, label="prediction"];
+    collision_risk -> intelligent_navigation [color="#ff6b6b", penwidth=2, label="safety"];
+    
+    // Performance feedback loops
+    system_metrics -> dynamic_params [color="#95e1d3", style=dashed, label="optimization"];
+    diagnostic_info -> safety_config [color="#95e1d3", style=dashed, label="tuning"];
+}

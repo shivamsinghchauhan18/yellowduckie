@@ -1,0 +1,240 @@
+// Duckietown Safe Navigation - Deployment Architecture
+// Real-world System Deployment and Hardware Integration
+// Render with: dot -Tpng deployment_architecture.dot -o deployment_architecture.png
+
+digraph DeploymentArchitecture {
+    rankdir=TB;
+    splines=true;
+    overlap=false;
+    fontname="Arial";
+    fontsize=12;
+    
+    node [fontname="Arial", fontsize=10, style=filled];
+    edge [fontname="Arial", fontsize=9];
+    
+    // Title
+    title [label="🚀 DUCKIETOWN SAFE NAVIGATION\nDeployment Architecture & Hardware Integration", 
+           shape=box, style="filled,rounded", fillcolor="#e3f2fd", color="#1976d2", fontsize=16, fontcolor="#1976d2"];
+    
+    // ========== HARDWARE LAYER ==========
+    subgraph cluster_hardware {
+        label="🔧 HARDWARE LAYER";
+        style=filled;
+        color="#f5f5f5";
+        fontcolor="#424242";
+        fontsize=14;
+        
+        subgraph cluster_duckiebot {
+            label="🤖 Duckiebot Hardware";
+            style=filled;
+            color="#e8f5e8";
+            fontcolor="#2e7d32";
+            
+            jetson [label="🖥️ NVIDIA Jetson Nano\n• ARM Cortex-A57 Quad-core\n• 4GB LPDDR4 RAM\n• 128-core Maxwell GPU\n• Ubuntu 18.04 LTS", 
+                   shape=box, fillcolor="#c8e6c9", color="#388e3c"];
+            
+            camera_hw [label="📷 Camera Module\n• Raspberry Pi Camera v2\n• 8MP Sony IMX219\n• 1080p30 Video\n• CSI-2 Interface", 
+                      shape=box, fillcolor="#c8e6c9", color="#388e3c"];
+            
+            motors [label="⚙️ DC Motors\n• Differential Drive\n• PWM Control\n• Encoder Feedback\n• 6V Operation", 
+                   shape=box, fillcolor="#c8e6c9", color="#388e3c"];
+            
+            leds [label="💡 LED Array\n• RGB LEDs\n• Programmable Patterns\n• 360° Visibility\n• I2C Control", 
+                 shape=box, fillcolor="#c8e6c9", color="#388e3c"];
+            
+            imu_hw [label="📊 IMU Sensor\n• 9-DOF Motion\n• Accelerometer\n• Gyroscope\n• Magnetometer", 
+                   shape=box, fillcolor="#c8e6c9", color="#388e3c"];
+            
+            battery [label="🔋 Battery System\n• 7.4V Li-Po\n• 2200mAh Capacity\n• ~2 Hour Runtime\n• USB-C Charging", 
+                    shape=box, fillcolor="#c8e6c9", color="#388e3c"];
+        }
+        
+        subgraph cluster_infrastructure {
+            label="🏗️ Infrastructure";
+            style=filled;
+            color="#fff3e0";
+            fontcolor="#ef6c00";
+            
+            duckietown_map [label="🗺️ Duckietown Map\n• Lane Markings\n• Traffic Signs\n• AprilTags\n• Intersections", 
+                           shape=box, fillcolor="#ffcc02", color="#f57c00"];
+            
+            other_duckiebots [label="🤖 Other Duckiebots\n• Multi-agent Environment\n• V2V Communication\n• Collision Scenarios\n• Coordination", 
+                             shape=box, fillcolor="#ffb74d", color="#ef6c00"];
+            
+            network_infra [label="📡 Network Infrastructure\n• WiFi Access Points\n• ROS Master Node\n• Data Collection\n• Remote Monitoring", 
+                          shape=box, fillcolor="#ffab91", color="#ef6c00"];
+        }
+    }
+    
+    // ========== SOFTWARE LAYER ==========
+    subgraph cluster_software {
+        label="💻 SOFTWARE LAYER";
+        style=filled;
+        color="#e8eaf6";
+        fontcolor="#3f51b5";
+        fontsize=14;
+        
+        subgraph cluster_os {
+            label="Operating System";
+            style=filled;
+            color="#f3e5f5";
+            fontcolor="#7b1fa2";
+            
+            ubuntu [label="🐧 Ubuntu 18.04 LTS\n• Linux Kernel 4.15\n• ARM64 Architecture\n• Real-time Scheduling\n• Device Drivers", 
+                   shape=box, fillcolor="#e1bee7", color="#8e24aa"];
+            
+            ros [label="🤖 ROS Melodic\n• Distributed Computing\n• Message Passing\n• Node Management\n• Parameter Server", 
+                shape=box, fillcolor="#ce93d8", color="#7b1fa2"];
+            
+            docker [label="🐳 Docker Container\n• Isolated Environment\n• Reproducible Builds\n• Easy Deployment\n• Version Control", 
+                   shape=box, fillcolor="#ba68c8", color="#7b1fa2"];
+        }
+        
+        subgraph cluster_runtime {
+            label="Runtime Environment";
+            style=filled;
+            color="#e1f5fe";
+            fontcolor="#0277bd";
+            
+            python [label="🐍 Python 3.6+\n• NumPy/SciPy\n• OpenCV 4.x\n• PyTorch/TensorFlow\n• ROS Python API", 
+                   shape=box, fillcolor="#b3e5fc", color="#0288d1"];
+            
+            cpp [label="⚡ C++ Runtime\n• Real-time Performance\n• Hardware Interfaces\n• Optimized Algorithms\n• ROS C++ API", 
+                shape=box, fillcolor="#81d4fa", color="#0277bd"];
+            
+            cuda [label="🚀 CUDA Runtime\n• GPU Acceleration\n• Neural Network Inference\n• Parallel Processing\n• TensorRT Optimization", 
+                 shape=box, fillcolor="#4fc3f7", color="#0277bd"];
+        }
+    }
+    
+    // ========== APPLICATION LAYER ==========
+    subgraph cluster_application {
+        label="🎯 APPLICATION LAYER";
+        style=filled;
+        color="#e8f5e8";
+        fontcolor="#2e7d32";
+        fontsize=14;
+        
+        subgraph cluster_core_apps {
+            label="Core Navigation";
+            style=filled;
+            color="#c8e6c9";
+            fontcolor="#388e3c";
+            
+            perception_stack [label="👁️ Perception Stack\n• Line Detection\n• Object Recognition\n• AprilTag Processing\n• Ground Projection", 
+                             shape=box, fillcolor="#a5d6a7", color="#388e3c"];
+            
+            control_stack [label="🎛️ Control Stack\n• Lane Following\n• Speed Control\n• State Management\n• Motor Commands", 
+                          shape=box, fillcolor="#81c784", color="#2e7d32"];
+            
+            safety_stack [label="🛡️ Safety Stack\n• Emergency Stop\n• Collision Avoidance\n• Risk Assessment\n• Safety Arbitration", 
+                         shape=box, fillcolor="#66bb6a", color="#2e7d32"];
+        }
+        
+        subgraph cluster_advanced_apps {
+            label="Advanced Features";
+            style=filled;
+            color="#ffcdd2";
+            fontcolor="#c62828";
+            
+            ai_stack [label="🧠 AI/ML Stack\n• Neural Networks\n• Trajectory Prediction\n• Scene Understanding\n• Multi-Object Tracking", 
+                     shape=box, fillcolor="#ef9a9a", color="#d32f2f"];
+            
+            adaptive_stack [label="🚀 Adaptive Systems\n• Dynamic Speed Control\n• Environmental Adaptation\n• Lane Change Logic\n• Path Planning", 
+                           shape=box, fillcolor="#e57373", color="#c62828"];
+            
+            communication_stack [label="📡 Communication\n• V2V Messaging\n• LED Signaling\n• Status Broadcasting\n• Coordination Protocol", 
+                                shape=box, fillcolor="#ef5350", color="#c62828"];
+        }
+        
+        monitoring_stack [label="📊 Monitoring & Diagnostics\n• Performance Metrics\n• Health Monitoring\n• Data Logging\n• System Analysis", 
+                         shape=box, fillcolor="#f5f5f5", color="#424242"];
+    }
+    
+    // ========== DEPLOYMENT CONFIGURATION ==========
+    subgraph cluster_deployment {
+        label="🚀 DEPLOYMENT CONFIGURATION";
+        style=filled;
+        color="#fff8e1";
+        fontcolor="#f57f17";
+        fontsize=14;
+        
+        launch_files [label="📋 Launch Configuration\n• master.launch\n• lane_following.launch\n• safety_system.launch\n• Parameter Files", 
+                     shape=box, fillcolor="#fff176", color="#f9a825"];
+        
+        config_files [label="⚙️ Configuration Files\n• YAML Parameters\n• Calibration Data\n• Safety Thresholds\n• Performance Tuning", 
+                     shape=box, fillcolor="#ffeb3b", color="#f57f17"];
+        
+        build_system [label="🔨 Build System\n• dts devel build\n• Docker Compose\n• CI/CD Pipeline\n• Automated Testing", 
+                     shape=box, fillcolor="#fdd835", color="#f57f17"];
+    }
+    
+    // ========== CONNECTIONS ==========
+    
+    // Hardware to OS
+    jetson -> ubuntu [label="boots", color="#4caf50"];
+    camera_hw -> ubuntu [label="CSI driver", color="#2196f3"];
+    motors -> ubuntu [label="GPIO/PWM", color="#ff9800"];
+    leds -> ubuntu [label="I2C driver", color="#ff9800"];
+    imu_hw -> ubuntu [label="I2C/SPI", color="#2196f3"];
+    battery -> jetson [label="power", color="#f44336"];
+    
+    // OS to Runtime
+    ubuntu -> ros [label="process mgmt", color="#9c27b0"];
+    ubuntu -> docker [label="containerization", color="#00bcd4"];
+    ros -> python [label="ROS nodes", color="#4caf50"];
+    ros -> cpp [label="performance", color="#ff5722"];
+    jetson -> cuda [label="GPU access", color="#3f51b5"];
+    
+    // Runtime to Applications
+    python -> perception_stack [label="image processing", color="#2196f3"];
+    python -> control_stack [label="control logic", color="#4caf50"];
+    python -> ai_stack [label="ML inference", color="#9c27b0"];
+    cpp -> safety_stack [label="real-time safety", color="#f44336"];
+    cuda -> ai_stack [label="GPU acceleration", color="#3f51b5"];
+    
+    // Application integration
+    perception_stack -> control_stack [label="sensor data", color="#4caf50"];
+    perception_stack -> safety_stack [label="object info", color="#f44336"];
+    ai_stack -> adaptive_stack [label="predictions", color="#9c27b0"];
+    safety_stack -> control_stack [label="safety override", color="#f44336", penwidth=3];
+    adaptive_stack -> control_stack [label="adaptive commands", color="#2196f3"];
+    
+    // Monitoring integration
+    control_stack -> monitoring_stack [label="performance data", color="#9e9e9e", style=dashed];
+    safety_stack -> monitoring_stack [label="safety events", color="#9e9e9e", style=dashed];
+    ai_stack -> monitoring_stack [label="AI metrics", color="#9e9e9e", style=dashed];
+    
+    // Communication
+    communication_stack -> other_duckiebots [label="V2V messages", color="#ff9800"];
+    communication_stack -> network_infra [label="status updates", color="#00bcd4"];
+    leds -> communication_stack [label="visual signals", color="#ff9800", dir=back];
+    
+    // Deployment
+    build_system -> docker [label="container build", color="#00bcd4"];
+    launch_files -> ros [label="node startup", color="#4caf50"];
+    config_files -> perception_stack [label="parameters", color="#607d8b", style=dotted];
+    config_files -> control_stack [label="tuning", color="#607d8b", style=dotted];
+    config_files -> safety_stack [label="thresholds", color="#607d8b", style=dotted];
+    
+    // Environment interaction
+    duckietown_map -> perception_stack [label="visual features", color="#795548"];
+    other_duckiebots -> perception_stack [label="vehicle detection", color="#795548"];
+    
+    // ========== PERFORMANCE ANNOTATIONS ==========
+    
+    perf1 [label="⚡ Real-time Performance\n• 10Hz perception pipeline\n• <100ms safety response\n• 30fps camera processing", 
+          shape=note, fillcolor="#e8f5e8", color="#2e7d32", pos="15,10!"];
+    
+    perf2 [label="🔋 Power Efficiency\n• 2+ hour operation\n• Dynamic CPU scaling\n• GPU power management", 
+          shape=note, fillcolor="#fff3e0", color="#ef6c00", pos="15,8!"];
+    
+    perf3 [label="🛡️ Safety Guarantees\n• Hardware emergency stop\n• Redundant safety systems\n• Fail-safe operation", 
+          shape=note, fillcolor="#ffebee", color="#c62828", pos="15,6!"];
+    
+    perf4 [label="📊 Monitoring & Debug\n• Real-time diagnostics\n• Performance profiling\n• Remote debugging", 
+          shape=note, fillcolor="#f5f5f5", color="#424242", pos="15,4!"];
+    
+    // Position title at top
+    title -> jetson [style=invis];
+}

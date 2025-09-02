@@ -147,8 +147,9 @@ class LaneControllerNode(DTROS):
 
         self.prev_veh_avg_x = None
         self.followed_veh_turn = None
+        # Subscribe to vehicle detection centers (private topic, remapped in launch)
         self.sub_centres = rospy.Subscriber(
-            "/duckmobile/vehicle_detection_node/centers",
+            "~vehicle_centers",
             VehicleCorners,
             self._cb_process_veh,
             queue_size=1,
@@ -174,10 +175,12 @@ class LaneControllerNode(DTROS):
         }
 
         self.current_tag_id = None
+        # Subscribe to apriltag detections (private topic, remapped in launch)
         self.sub_apriltag = rospy.Subscriber(
-            "/duckmobile/apriltag_detector_node/detections",
+            "~apriltag_detections",
             AprilTagDetectionArray,
             self.cbAprilTag,
+            queue_size=1,
         )
 
         self.params["~abs_turning_threshold_camera_frame"] = DTParam(

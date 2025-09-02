@@ -49,7 +49,6 @@
     <group ns="$(arg veh)">
         <remap from="lane_controller_node/lane_pose" to="/$(arg veh)/lane_filter_node/lane_pose"/>
         <remap from="lane_controller_node/fsm_mode" to="/$(arg veh)/fsm_node/mode"/>
-        <remap from="lane_controller_node/car_cmd" to="/$(arg veh)/car_cmd_switch_node/cmd"/>
         <include file="$(find lane_control)/launch/lane_controller_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="param_file_name" value="$(arg param_file_name)"/>

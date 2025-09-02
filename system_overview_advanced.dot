@@ -1,0 +1,178 @@
+// Duckietown Safe Navigation - High-Level System Overview
+// Advanced Safety & Navigation Architecture
+// Render with: dot -Tpng system_overview_advanced.dot -o system_overview_advanced.png
+
+digraph SystemOverview {
+    rankdir=TB;
+    splines=true;
+    overlap=false;
+    fontname="Arial";
+    fontsize=14;
+    
+    node [fontname="Arial", fontsize=11, style=filled];
+    edge [fontname="Arial", fontsize=9];
+    
+    // Title
+    title [label="🤖 DUCKIETOWN SAFE NAVIGATION SYSTEM\nAdvanced Autonomous Navigation with Predictive Safety", 
+           shape=box, style="filled,rounded", fillcolor="#e3f2fd", color="#1976d2", fontsize=16, fontcolor="#1976d2"];
+    
+    // ========== MAIN SYSTEM LAYERS ==========
+    
+    subgraph cluster_input {
+        label="📡 INPUT LAYER";
+        style=filled;
+        color="#e8f5e8";
+        fontcolor="#2e7d32";
+        
+        sensors [label="🔍 SENSORS\n• Camera (RGB)\n• IMU (Motion)\n• Wheel Encoders\n• Mock Simulation", 
+                shape=box, fillcolor="#c8e6c9", color="#388e3c"];
+        
+        external [label="🌐 EXTERNAL\n• Joystick Control\n• Network Interface\n• Configuration Files\n• V2V Communication", 
+                 shape=box, fillcolor="#c8e6c9", color="#388e3c"];
+    }
+    
+    subgraph cluster_perception {
+        label="👁️ PERCEPTION & UNDERSTANDING";
+        style=filled;
+        color="#f3e5f5";
+        fontcolor="#7b1fa2";
+        
+        basic_perception [label="🎯 BASIC PERCEPTION\n• Line Detection\n• Object Detection\n• AprilTag Recognition\n• Ground Projection", 
+                         shape=box, fillcolor="#e1bee7", color="#8e24aa"];
+        
+        advanced_perception [label="🧠 ADVANCED PERCEPTION\n• Multi-Object Tracking\n• Trajectory Prediction\n• Scene Understanding\n• Sensor Fusion", 
+                           shape=box, fillcolor="#ce93d8", color="#7b1fa2"];
+    }
+    
+    subgraph cluster_safety {
+        label="🛡️ SAFETY SYSTEMS";
+        style=filled;
+        color="#ffebee";
+        fontcolor="#c62828";
+        
+        safety_core [label="🚨 CORE SAFETY\n• Emergency Stop (<100ms)\n• Collision Detection\n• Risk Assessment\n• Safety Arbitration", 
+                    shape=box, fillcolor="#ffcdd2", color="#d32f2f"];
+        
+        safety_advanced [label="⚡ PREDICTIVE SAFETY\n• Collision Prediction\n• Multi-Layer Protection\n• Dynamic Parameters\n• Health Monitoring", 
+                        shape=box, fillcolor="#ef9a9a", color="#c62828"];
+    }
+    
+    subgraph cluster_decision {
+        label="🧠 DECISION & PLANNING";
+        style=filled;
+        color="#e8f5e8";
+        fontcolor="#2e7d32";
+        
+        basic_control [label="🛣️ BASIC CONTROL\n• Lane Following\n• Stop Line Detection\n• Speed Control\n• State Management", 
+                      shape=box, fillcolor="#a5d6a7", color="#388e3c"];
+        
+        advanced_control [label="🚀 INTELLIGENT CONTROL\n• Adaptive Speed\n• Lane Changing\n• Path Planning\n• Environmental Adaptation", 
+                         shape=box, fillcolor="#81c784", color="#2e7d32"];
+    }
+    
+    subgraph cluster_actuation {
+        label="🎛️ ACTUATION & CONTROL";
+        style=filled;
+        color="#fff3e0";
+        fontcolor="#ef6c00";
+        
+        motors [label="⚙️ MOTOR CONTROL\n• Wheel Commands\n• Speed Regulation\n• Feedback Control\n• Hardware Interface", 
+               shape=box, fillcolor="#ffcc02", color="#f57c00"];
+        
+        communication [label="💡 COMMUNICATION\n• LED Patterns\n• Signal Display\n• Status Indication\n• Emergency Alerts", 
+                      shape=box, fillcolor="#ffb74d", color="#ef6c00"];
+    }
+    
+    subgraph cluster_monitoring {
+        label="📊 MONITORING & DIAGNOSTICS";
+        style=filled;
+        color="#fafafa";
+        fontcolor="#424242";
+        
+        monitoring [label="📈 SYSTEM MONITORING\n• Performance Metrics\n• Health Diagnostics\n• Data Logging\n• Real-time Analysis", 
+                   shape=box, fillcolor="#e0e0e0", color="#616161"];
+        
+        visualization [label="🎨 VISUALIZATION\n• Debug Display\n• Trajectory Visualization\n• System Status\n• Development Tools", 
+                      shape=box, fillcolor="#bdbdbd", color="#424242"];
+    }
+    
+    // ========== DATA FLOW ==========
+    
+    // Main forward flow
+    sensors -> basic_perception [label="Raw Data", color="#4caf50", penwidth=2];
+    basic_perception -> advanced_perception [label="Processed Data", color="#9c27b0", penwidth=2];
+    
+    advanced_perception -> safety_core [label="Object Info", color="#f44336", penwidth=2];
+    advanced_perception -> basic_control [label="Perception Data", color="#2196f3", penwidth=2];
+    
+    safety_core -> safety_advanced [label="Risk Data", color="#ff5722", penwidth=2];
+    basic_control -> advanced_control [label="Control State", color="#4caf50", penwidth=2];
+    
+    safety_advanced -> motors [label="Safety Override", color="#f44336", penwidth=3];
+    advanced_control -> motors [label="Control Commands", color="#2196f3", penwidth=2];
+    
+    motors -> communication [label="Status", color="#ff9800", penwidth=2];
+    
+    // Monitoring connections
+    safety_core -> monitoring [label="Safety Events", color="#9e9e9e", style=dashed];
+    advanced_control -> monitoring [label="Performance Data", color="#9e9e9e", style=dashed];
+    motors -> monitoring [label="Execution Data", color="#9e9e9e", style=dashed];
+    
+    monitoring -> visualization [label="Display Data", color="#607d8b", style=dashed];
+    
+    // External inputs
+    external -> basic_perception [label="Config/Control", color="#795548", style=dotted];
+    external -> safety_core [label="Manual Override", color="#f44336", style=dotted];
+    external -> advanced_control [label="Navigation Input", color="#3f51b5", style=dotted];
+    
+    // Feedback loops
+    motors -> basic_control [label="Feedback", color="#4caf50", style=dashed, dir=back];
+    communication -> external [label="Status Broadcast", color="#ff9800", style=dashed];
+    monitoring -> safety_advanced [label="Health Data", color="#9e9e9e", style=dashed, dir=back];
+    
+    // ========== KEY FEATURES HIGHLIGHT ==========
+    
+    subgraph cluster_features {
+        label="🌟 KEY ADVANCED FEATURES";
+        style="filled,rounded";
+        color="#f8f9fa";
+        fontcolor="#343a40";
+        
+        feature1 [label="🔮 Predictive Collision Avoidance\nUses Kalman filtering and trajectory\nprediction to prevent accidents", 
+                 shape=note, fillcolor="#d4edda", color="#155724"];
+        
+        feature2 [label="🚀 Adaptive Speed Control\nDynamically adjusts speed based on\nenvironmental conditions", 
+                 shape=note, fillcolor="#cce5ff", color="#004085"];
+        
+        feature3 [label="🔄 Intelligent Lane Changing\nSafe lane changes with multi-phase\nexecution and abort capability", 
+                 shape=note, fillcolor="#fff3cd", color="#856404"];
+        
+        feature4 [label="🤝 Vehicle-to-Vehicle Communication\nCoordinates with other Duckiebots\nfor safer navigation", 
+                 shape=note, fillcolor="#f8d7da", color="#721c24"];
+        
+        feature5 [label="📊 Real-time System Monitoring\nContinuous health monitoring with\nperformance optimization", 
+                 shape=note, fillcolor="#e2e3e5", color="#383d41"];
+    }
+    
+    // ========== PERFORMANCE METRICS ==========
+    
+    subgraph cluster_metrics {
+        label="📈 PERFORMANCE TARGETS";
+        style="filled,rounded";
+        color="#f1f3f4";
+        fontcolor="#202124";
+        
+        metrics [label="⚡ Emergency Stop: <100ms\n🎯 Object Tracking: 5 objects @ 10Hz\n🛣️ Lane Change Success: >95%\n🔋 Battery Impact: <15%\n📊 System Uptime: 99.9%\n🚀 Real-time Performance: <100ms latency", 
+                shape=box, fillcolor="#e8f0fe", color="#1a73e8"];
+    }
+    
+    // Position elements
+    title -> sensors [style=invis];
+    
+    {rank=same; sensors, external}
+    {rank=same; basic_perception, advanced_perception}
+    {rank=same; safety_core, safety_advanced}
+    {rank=same; basic_control, advanced_control}
+    {rank=same; motors, communication}
+    {rank=same; monitoring, visualization}
+}

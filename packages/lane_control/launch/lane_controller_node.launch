@@ -8,9 +8,14 @@
         <group ns="$(arg veh)">
 	    <node  pkg="$(arg pkg_name)" type="$(arg node_name).py" name="$(arg node_name)" output="screen">
 	        <rosparam command="load" file="$(find lane_control)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
-			 <remap from="lane_controller_node/lane_pose"         to="lane_filter_node/lane_pose"/>
-             <remap from="lane_controller_node/stop_line_reading" to="stop_line_filter_node/stop_line_reading"/>
-             <remap from="lane_controller_node/wheels_cmd"        to="wheels_driver_node/wheels_cmd"/>
+				<!-- Inputs -->
+				<remap from="lane_controller_node/lane_pose" to="lane_filter_node/lane_pose"/>
+				<remap from="lane_controller_node/stop_line_reading" to="stop_line_filter_node/stop_line_reading"/>
+				<!-- Use executed feedback from wheels driver (not the command topic) -->
+				<remap from="lane_controller_node/wheels_cmd" to="wheels_driver_node/wheels_cmd_executed"/>
+				<!-- Parameterized cross-veh topics -->
+				<remap from="lane_controller_node/vehicle_centers" to="/$(arg veh)/vehicle_detection_node/centers"/>
+				<remap from="lane_controller_node/apriltag_detections" to="/$(arg veh)/apriltag_detector_node/detections"/>
 	    </node>
 	</group>
 

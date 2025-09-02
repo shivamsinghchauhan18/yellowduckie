@@ -1,0 +1,24 @@
+# Lane Change Controller Configuration
+
+# Timing Parameters
+signal_duration: 2.0              # Duration to signal before lane change (seconds)
+max_maneuver_time: 8.0           # Maximum time allowed for lane change execution (seconds)
+assessment_timeout: 3.0          # Timeout for feasibility assessment (seconds)
+
+# Safety Parameters
+min_feasibility_score: 0.7       # Minimum feasibility score to proceed (0.0-1.0)
+lateral_acceleration_limit: 0.5  # Maximum lateral acceleration during lane change (m/s²)
+safe_following_distance: 1.5     # Minimum safe following distance (meters)
+
+# Geometry Parameters
+lane_width: 0.6                  # Standard lane width (meters)
+lateral_clearance: 0.1           # Required lateral clearance (meters)
+
+# Control Parameters
+lateral_control_gain: 2.0        # Proportional gain for lateral control
+lane_change_velocity: 0.15       # Velocity during lane change execution (m/s)
+
+# Feasibility Assessment Weights
+adjacent_lane_weight: 0.4        # Weight for adjacent lane clearance assessment
+vehicle_proximity_weight: 0.4    # Weight for vehicle proximity assessment
+position_suitability_weight: 0.2 # Weight for current position assessment
