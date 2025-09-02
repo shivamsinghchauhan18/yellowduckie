@@ -13,16 +13,26 @@ try:
     torch.cuda.is_available = lambda: False
     torch.backends.cudnn.enabled = False
     TORCH_AVAILABLE = True
-except ImportError as e:
+except Exception as e:
     print(f"WARNING: PyTorch not available: {e}")
     print("Object detection will be disabled")
     TORCH_AVAILABLE = False
     torch = None
 
-from dt_data_api import DataClient
-from solution.integration_activity import MODEL_NAME, DT_TOKEN
-
-from dt_device_utils import DeviceHardwareBrand, get_device_hardware_brand
+try:
+    from dt_data_api import DataClient
+    from solution.integration_activity import MODEL_NAME, DT_TOKEN
+    from dt_device_utils import DeviceHardwareBrand, get_device_hardware_brand
+except Exception as e:
+    DataClient = None
+    def MODEL_NAME():
+        return "model"
+    def DT_TOKEN():
+        return ""
+    class DeviceHardwareBrand:
+        JETSON_NANO = "JETSON_NANO"
+    def get_device_hardware_brand():
+        return None
 
 from .constants import IMAGE_SIZE, ASSETS_DIR
 
@@ -48,7 +58,7 @@ def run(input, exception_on_failure=False):
 
 class Wrapper:
     def __init__(self, aido_eval=False):
-        if not TORCH_AVAILABLE:
+    if not TORCH_AVAILABLE:
             print("WARNING: PyTorch not available, creating dummy wrapper")
             self.model = None
             return
@@ -65,7 +75,7 @@ class Wrapper:
             assert os.path.exists(weight_file_path)
         else:
             dt_token = DT_TOKEN()
-
+            
             if get_device_hardware_brand() == DeviceHardwareBrand.JETSON_NANO:
                 # when running on the robot, we store models in the persistent `data` directory
                 models_path = "/data/nn_models"
@@ -75,7 +85,11 @@ class Wrapper:
             if not os.path.exists(models_path):
                 os.makedirs(models_path)
 
-            # open a pointer to the DCSS storage unit
+            # open a pointer to the DCSS storage unit (optional dependency)
+            if DataClient is None:
+                print("WARNING: dt_data_api not available; cannot auto-download model. Skipping downloads.")
+                self.model = None
+                return
             client = DataClient(dt_token)
             storage = client.storage("user")
 

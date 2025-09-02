@@ -404,6 +404,11 @@ class SensorFusionEngine:
         )
         
         return metrics
+
+
+# Backward compatibility: expose SensorFusion as alias for SensorFusionEngine
+class SensorFusion(SensorFusionEngine):
+    pass
     
     def _assess_sensor_health(self, sync_data):
         """Assess health of individual sensors."""

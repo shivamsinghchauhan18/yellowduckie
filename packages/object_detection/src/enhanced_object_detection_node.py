@@ -11,9 +11,20 @@ from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Header, String
 from geometry_msgs.msg import Point, Polygon, Point32
 
-from nn_model.constants import IMAGE_SIZE
-from nn_model.model import Wrapper
-from solution.integration_activity import NUMBER_FRAMES_SKIPPED
+try:
+    from nn_model.constants import IMAGE_SIZE
+    from nn_model.model import Wrapper
+    from solution.integration_activity import NUMBER_FRAMES_SKIPPED
+except Exception as e:
+    rospy.logwarn(f"Optional deps not available ({e}); running in passthrough mode.")
+    IMAGE_SIZE = 416
+    def NUMBER_FRAMES_SKIPPED():
+        return 0
+    class Wrapper:
+        def __init__(self, *_args, **_kwargs):
+            self.model = None
+        def predict(self, _img):
+            return [], [], []
 
 
 class EnhancedObjectDetectionNode(DTROS):
@@ -91,7 +102,11 @@ class EnhancedObjectDetectionNode(DTROS):
         
         # Initialize components
         self.bridge = CvBridge()
-        self.model_wrapper = Wrapper(rospy.get_param("~AIDO_eval", False))
+        try:
+            self.model_wrapper = Wrapper(rospy.get_param("~AIDO_eval", False))
+        except Exception as e:
+            self.logwarn(f"Model wrapper unavailable: {e}. Running without detection.")
+            self.model_wrapper = None
         
         self.initialized = True
         self.loginfo("Enhanced Object Detection Node initialized")

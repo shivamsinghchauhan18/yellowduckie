@@ -9,6 +9,9 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
+# Ensure Python package in include/ is discoverable at runtime
+catkin_python_setup()
+
 add_message_files(
   FILES
   LaneChangeRequest.msg

@@ -189,6 +189,9 @@ class CameraDriverNode(DTROS):
             # If OpenCV fails, we could implement libcamera or raspistill capture here
             self.logwarn("OpenCV camera initialization failed")
             return None
+        except Exception as e:
+            self.logerr(f"Failed to initialize Pi camera: {e}")
+            return None
             
     def initialize_jetson_csi_camera(self):
         """Initialize Jetson CSI camera via GStreamer (nvarguscamerasrc)."""
@@ -221,10 +224,6 @@ class CameraDriverNode(DTROS):
             return None
         except Exception as e:
             self.logerr(f"Failed to initialize Jetson CSI camera: {e}")
-            return None
-
-        except Exception as e:
-            self.logerr(f"Failed to initialize Pi camera: {e}")
             return None
     
     def initialize_usb_camera(self):

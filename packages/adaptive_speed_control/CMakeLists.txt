@@ -11,6 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
 )
 
+catkin_python_setup()
+
 catkin_package()
 
 catkin_install_python(PROGRAMS
