@@ -7,7 +7,7 @@ from duckietown.dtros import DTROS, NodeType
 # Standard ROS messages
 from std_msgs.msg import Header, String, Float32
 from sensor_msgs.msg import Imu, CompressedImage
-from duckietown_msgs.msg import Twist2DStamped
+from duckietown_msgs.msg import Twist2DStamped, LanePose
 
 # Internal modules
 from predictive_perception.sensor_fusion import (
@@ -97,7 +97,7 @@ class PerceptionDataFusionNode(DTROS):
         # Lane pose from lane filter
         self.sub_lane_pose = rospy.Subscriber(
             f"/{self.veh}/lane_filter_node/lane_pose",
-            String,  # Placeholder - would be LanePose message
+            LanePose,
             self.lane_pose_callback,
             queue_size=1
         )
@@ -134,7 +134,7 @@ class PerceptionDataFusionNode(DTROS):
         
         # Storage for latest sensor data
         self.latest_detections = []
-        self.latest_lane_pose = None
+        self.latest_lane_pose = None  # type: Optional[LanePose]
         self.latest_car_cmd = None
         
         self.loginfo("Perception Data Fusion Node initialized")
@@ -160,11 +160,11 @@ class PerceptionDataFusionNode(DTROS):
         except Exception as e:
             self.logerr(f"Error in camera detections callback: {e}")
     
-    def lane_pose_callback(self, msg):
+    def lane_pose_callback(self, msg: LanePose):
         """Process lane pose data."""
         try:
-            # Store latest lane pose
-            self.latest_lane_pose = msg.data
+            # Store latest LanePose message
+            self.latest_lane_pose = msg
             
         except Exception as e:
             self.logerr(f"Error in lane pose callback: {e}")

@@ -5,7 +5,7 @@ import numpy as np
 import math
 from threading import Lock
 from duckietown.dtros import DTROS, NodeType, TopicType, DTParam, ParamType
-from duckietown_msgs.msg import Twist2DStamped, VehicleCorners, BoolStamped
+from duckietown_msgs.msg import Twist2DStamped, VehicleCorners, BoolStamped, LanePose
 from std_msgs.msg import String, Header
 from geometry_msgs.msg import Point32
 
@@ -43,7 +43,7 @@ class CollisionDetectionManagerNode(DTROS):
         ~vehicle_detections (:obj:`VehicleCorners`): Detected vehicles from vehicle detection
         ~object_detections (:obj:`String`): General object detections (simplified)
         ~car_cmd (:obj:`Twist2DStamped`): Current vehicle commands for velocity estimation
-        ~lane_pose (:obj:`String`): Current lane pose for position estimation
+        /<veh>/lane_filter_node/lane_pose (:obj:`LanePose`): Current lane pose for position estimation
     
     Publishers:
         ~collision_risk (:obj:`String`): Current collision risk assessment
@@ -57,6 +57,8 @@ class CollisionDetectionManagerNode(DTROS):
             node_name=node_name,
             node_type=NodeType.PERCEPTION
         )
+        # Vehicle namespace for absolute topics
+        self.veh = rospy.get_param("~veh", rospy.get_namespace().strip("/"))
         
         # Parameters
         self.min_safe_distance = DTParam(
@@ -166,8 +168,8 @@ class CollisionDetectionManagerNode(DTROS):
         )
         
         self.sub_lane_pose = rospy.Subscriber(
-            "~lane_pose",
-            String,  # Simplified for now
+            f"/{self.veh}/lane_filter_node/lane_pose",
+            LanePose,
             self.cb_lane_pose,
             queue_size=1
         )
@@ -237,17 +239,22 @@ class CollisionDetectionManagerNode(DTROS):
         with self.state_lock:
             self.current_velocity = msg
     
-    def cb_lane_pose(self, msg):
+    def cb_lane_pose(self, msg: LanePose):
         """
         Callback for current lane pose
         
         Args:
-            msg (:obj:`String`): Lane pose information (simplified)
+            msg (:obj:`LanePose`): Lane pose information
         """
         with self.state_lock:
-            # In full implementation, would process LanePose message
-            # For now, store simplified position info
-            self.current_position = msg.data
+            # Store only fields we might use downstream
+            self.current_position = {
+                'd': msg.d,
+                'phi': msg.phi,
+                'sigma_d': msg.sigma_d,
+                'sigma_phi': msg.sigma_phi,
+                'in_lane': msg.in_lane
+            }
     
     def estimate_vehicle_distance(self, corners):
         """

@@ -10,6 +10,7 @@ from duckietown.dtros import DTROS, NodeType
 from std_msgs.msg import Header, String
 from sensor_msgs.msg import CompressedImage
 from geometry_msgs.msg import Point
+from duckietown_msgs.msg import LanePose
 
 # Custom messages (we'll create these)
 try:
@@ -109,7 +110,7 @@ class SceneUnderstandingModuleNode(DTROS):
         # Subscribe to lane pose
         self.sub_lane_pose = rospy.Subscriber(
             f"/{self.veh}/lane_filter_node/lane_pose",
-            String,  # Placeholder - would be LanePose in real implementation
+            LanePose,
             self.lane_pose_callback,
             queue_size=1
         )
@@ -151,13 +152,11 @@ class SceneUnderstandingModuleNode(DTROS):
         # In real system, would maintain dictionary of tracked objects
         pass
     
-    def lane_pose_callback(self, msg):
+    def lane_pose_callback(self, msg: LanePose):
         """
         Process lane pose information.
         """
-        # Placeholder implementation
-        # In real system, would store lane pose data
-        pass
+        self.lane_pose = msg
     
     def apriltags_callback(self, msg):
         """
