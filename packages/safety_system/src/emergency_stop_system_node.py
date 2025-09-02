@@ -68,6 +68,9 @@ class EmergencyStopSystemNode(DTROS):
             node_name=node_name, 
             node_type=NodeType.CONTROL
         )
+
+    # Vehicle namespace for absolute topics
+        self.veh = rospy.get_param("~veh", rospy.get_namespace().strip("/"))
         
         # Parameters
         self.max_response_time = DTParam(
@@ -98,6 +101,15 @@ class EmergencyStopSystemNode(DTROS):
             default=5.0,
             min_value=1.0,
             max_value=30.0
+        )
+
+        # Heartbeat rate for status publication (Hz)
+        self.status_hz = DTParam(
+            "~status_hz",
+            param_type=ParamType.FLOAT,
+            default=10.0,
+            min_value=0.5,
+            max_value=100.0
         )
         
         # State variables
@@ -135,8 +147,9 @@ class EmergencyStopSystemNode(DTROS):
         )
         
         # Subscribers
+        # Subscribe to other nodes using absolute, veh-qualified topics to avoid remap mismatches
         self.sub_collision_risk = rospy.Subscriber(
-            "~collision_risk",
+            f"/{self.veh}/collision_detection_manager_node/collision_risk",
             String,  # Would be CollisionRisk in full implementation
             self.cb_collision_risk,
             queue_size=1
@@ -150,14 +163,14 @@ class EmergencyStopSystemNode(DTROS):
         )
         
         self.sub_system_health = rospy.Subscriber(
-            "~system_health",
+            f"/{self.veh}/safety_fusion_manager_node/system_health_summary",
             String,  # Would be SystemHealth in full implementation
             self.cb_system_health,
             queue_size=1
         )
         
         self.sub_car_cmd = rospy.Subscriber(
-            "~car_cmd",
+            f"/{self.veh}/lane_controller_node/car_cmd",
             Twist2DStamped,
             self.cb_car_cmd,
             queue_size=1
@@ -167,8 +180,11 @@ class EmergencyStopSystemNode(DTROS):
         # self.srv_trigger_emergency = rospy.Service(...)
         # self.srv_reset_emergency = rospy.Service(...)
         
-        # Start monitoring timer
+    # Start monitoring timer for emergency control loop
         self.timer = rospy.Timer(rospy.Duration(0.01), self.monitor_emergency_conditions)
+    # Separate timer for heartbeat status publishing
+        self._last_status_pub = rospy.Time(0)
+        self.status_timer = rospy.Timer(rospy.Duration(max(0.001, 1.0 / self.status_hz.value)), self._heartbeat_tick)
         
         self.log("Emergency Stop System initialized and monitoring")
     
@@ -205,10 +221,19 @@ class EmergencyStopSystemNode(DTROS):
         """
         with self.state_lock:
             # In full implementation, would parse SystemHealth message
-            self.system_health_ok = "HEALTHY" in msg.data
-            
+            # Parse aggregated health summary; if any subsystem TIMEOUT/FAILURE -> unhealthy
+            self.system_health_ok = ("FAILURE" not in msg.data) and ("CRITICAL" not in msg.data) and ("TIMEOUT" not in msg.data)
+
             if not self.system_health_ok and not self.emergency_active:
-                self.trigger_emergency_stop("system_health_failure", rospy.Time.now())
+                # Try to extract first offending subsystem for explicit reason
+                reason = "system_health_failure"
+                for token in msg.data.split("|"):
+                    if ":" in token:
+                        name, status = token.split(":", 1)
+                        if any(x in status for x in ["TIMEOUT", "FAILURE", "CRITICAL"]):
+                            reason = f"system_health_failure:{name}:{status}"
+                            break
+                self.trigger_emergency_stop(reason, rospy.Time.now())
     
     def cb_car_cmd(self, msg):
         """
@@ -335,6 +360,10 @@ class EmergencyStopSystemNode(DTROS):
             status_msg.data = "NORMAL_OPERATION"
         
         self.pub_emergency_status.publish(status_msg)
+
+    def _heartbeat_tick(self, event):
+        """Periodic heartbeat publisher to ensure downstream health monitors receive fresh status at the configured rate."""
+        self.publish_status()
     
     def on_shutdown(self):
         """

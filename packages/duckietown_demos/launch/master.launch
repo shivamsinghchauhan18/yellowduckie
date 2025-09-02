@@ -61,6 +61,7 @@
     <!-- ========== CAMERA SYSTEM (REQUIRED) ========== -->
     <arg name="camera" default="true" doc="Enable camera node for image capture"/>
     <arg name="camera_mock" default="false" doc="Use mock camera for simulation"/>
+    <arg name="external_camera" default="false" doc="If true, do NOT launch a camera here; assume an external (official Duckietown) camera_node is already running."/>
     <arg name="/camera/raw" default="false"/>
     <arg name="/camera/rect" default="false"/>
 
@@ -122,8 +123,8 @@
     <!-- ================================================================== -->
 
     
-    <!-- Real camera node -->
-    <group if="$(eval arg('camera') and not arg('camera_mock'))">
+    <!-- Real camera node (official Duckietown camera). To avoid collisions, set external_camera:=true if another camera_node is already running. -->
+    <group if="$(eval arg('camera') and not arg('camera_mock') and not arg('external_camera'))">
         <include file="$(find camera)/launch/camera_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="config" value="$(arg config)"/>

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>camera</name>
+  <name>custom_camera</name>
   <version>1.0.0</version>
-  <description>Camera driver configuration for Duckiebot</description>
+  <description>Custom camera driver (disabled by default). Use official Duckietown camera_node instead.</description>
 
   <maintainer email="developer@duckietown.org">Duckietown Developer</maintainer>
   <license>GPLv3</license>

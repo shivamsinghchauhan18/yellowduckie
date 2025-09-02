@@ -93,6 +93,32 @@ class SafetyFusionManagerNode(DTROS):
             min_value=0.1,
             max_value=1.0
         )
+
+        # Expected heartbeat rates (Hz) for key subsystems to compute dynamic timeouts
+        self.emergency_expected_hz = DTParam(
+            "~emergency_expected_hz",
+            param_type=ParamType.FLOAT,
+            default=10.0,
+            min_value=0.5,
+            max_value=100.0
+        )
+
+        self.collision_expected_hz = DTParam(
+            "~collision_expected_hz",
+            param_type=ParamType.FLOAT,
+            default=20.0,
+            min_value=0.5,
+            max_value=100.0
+        )
+
+        # Startup grace period before declaring timeouts (seconds)
+        self.startup_grace_s = DTParam(
+            "~startup_grace_s",
+            param_type=ParamType.FLOAT,
+            default=3.0,
+            min_value=0.0,
+            max_value=30.0
+        )
         
         # State variables
         self.safety_status = SafetyStatus()
@@ -194,6 +220,8 @@ class SafetyFusionManagerNode(DTROS):
         )
         
         self.log("Safety Fusion Manager initialized")
+    # Record node start time for startup grace handling
+        self._node_start_time = rospy.Time.now()
     
     def cb_emergency_status(self, msg):
         """
@@ -507,11 +535,21 @@ class SafetyFusionManagerNode(DTROS):
         """
         with self.state_lock:
             current_time = rospy.Time.now()
-            timeout_threshold = self.health_check_timeout.value
+            # Respect startup grace: do not flag timeouts during initial startup
+            if (current_time - self._node_start_time).to_sec() < self.startup_grace_s.value:
+                return
             
             # Check for health update timeouts
             for system_name, last_update in self.last_health_updates.items():
-                if (current_time - last_update).to_sec() > timeout_threshold:
+                # Compute dynamic timeout per system if expected heartbeat is known
+                if system_name == "emergency_system":
+                    dyn_timeout = max(self.health_check_timeout.value, 1.5 * (1.0 / max(self.emergency_expected_hz.value, 1e-3)))
+                elif system_name == "collision_detection":
+                    dyn_timeout = max(self.health_check_timeout.value, 1.5 * (1.0 / max(self.collision_expected_hz.value, 1e-3)))
+                else:
+                    dyn_timeout = self.health_check_timeout.value
+
+                if (current_time - last_update).to_sec() > dyn_timeout:
                     self.log(f"Health update timeout for {system_name}", "warn")
                     
                     # Mark system as unhealthy due to timeout
