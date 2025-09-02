@@ -5,6 +5,9 @@
     
     <group ns="$(arg veh)">
         <node name="$(arg node_name)" pkg="$(arg pkg_name)" type="lane_change_controller_node.py" output="screen" clear_params="true">
+            <!-- Vehicle name parameter -->
+            <param name="~veh_name" value="$(arg veh)"/>
+            
             <!-- Timing parameters -->
             <param name="~signal_duration" value="2.0"/>
             <param name="~max_maneuver_time" value="8.0"/>
@@ -20,9 +23,9 @@
             <param name="~lateral_clearance" value="0.1"/>
             
             <!-- Topic remappings -->
-            <remap from="~lane_pose" to="lane_filter_node/lane_pose"/>
-            <remap from="~vehicle_detections" to="vehicle_detection_node/centers"/>
-            <remap from="~safety_override" to="safety_system_node/emergency_status"/>
+            <remap from="~lane_pose" to="/$(arg veh)/lane_filter_node/lane_pose"/>
+            <remap from="~vehicle_detections" to="/$(arg veh)/vehicle_detection_node/centers"/>
+            <remap from="~safety_override" to="/$(arg veh)/safety_system_node/emergency_status"/>
         </node>
     </group>
 </launch>

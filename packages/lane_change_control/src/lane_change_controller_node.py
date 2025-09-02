@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import rospy
 import numpy as np
 from enum import IntEnum
@@ -72,6 +73,9 @@ class LaneChangeControllerNode(DTROS):
             node_name=node_name, 
             node_type=NodeType.CONTROL
         )
+        
+        # Get vehicle name
+        self.veh_name = rospy.get_param("~veh_name", os.environ.get('VEHICLE_NAME', 'duckiebot'))
         
         # Initialize parameters
         self._init_parameters()

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import numpy as np
+import os
 import rospy
 
 from duckietown.dtros import DTROS, NodeType, TopicType, DTParam, ParamType
@@ -56,6 +57,9 @@ class LaneControllerNode(DTROS):
 
         # Initialize the DTROS parent class
         super(LaneControllerNode, self).__init__(node_name=node_name, node_type=NodeType.PERCEPTION)
+        
+        # Get vehicle name
+        self.veh_name = rospy.get_param("~veh_name", os.environ.get('VEHICLE_NAME', 'duckiebot'))
 
         # Add the node parameters to the parameters dictionary
         self.params = dict()
