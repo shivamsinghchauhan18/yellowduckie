@@ -92,7 +92,7 @@ class UMC:
 
     def __init__(self, veh: str, rate_hz: int, onnx_model_path: Optional[str],
                  roboflow_model_id: Optional[str], rf_period: float, log_interval: float,
-                 debug_viz: bool):
+                 debug_viz: bool, cv_camera_fallback: bool = False, camera_device: int = 0):
         self.veh = veh
         self.rate_hz = max(1, int(rate_hz))
         self.dt = 1.0 / self.rate_hz
@@ -168,6 +168,10 @@ class UMC:
         # CV state
         self.cv_prev_err = 0.0
         self.debug_viz = bool(debug_viz)
+        self.cv_camera_fallback = bool(cv_camera_fallback)
+        self.camera_device = int(camera_device)
+        self._cv_cam_thread = None
+        self._cv_cam_stop = threading.Event()
 
         # ROS wiring
         ns = f"/{self.veh}"
@@ -224,6 +228,15 @@ class UMC:
         rospy.loginfo(f"[UMC] Initialized veh={self.veh} rate={self.rate_hz}Hz "
                       f"onnx={'yes' if self.use_onnx else 'no'} "
                       f"roboflow={'yes' if self.use_rf else 'no'}")
+
+        # Optionally start OpenCV camera fallback if ROS camera is not available
+        if self.cv_camera_fallback:
+            try:
+                self._cv_cam_thread = threading.Thread(target=self._cv_cam_loop, name="cv_cam_fallback", daemon=True)
+                self._cv_cam_thread.start()
+                rospy.loginfo(f"[UMC] CV camera fallback started on /dev/video{self.camera_device}")
+            except Exception:
+                rospy.logwarn("[UMC] Failed to start CV camera fallback")
 
     # ==== Callbacks ====
     def cb_image(self, msg: CompressedImage):
@@ -762,6 +775,38 @@ class UMC:
         cmd.omega = float(omega)
         self.pub_cmd.publish(cmd)
 
+    # ==== Optional CV camera fallback (no ROS camera node) ====
+    def _cv_cam_loop(self):
+        cap = None
+        try:
+            cap = cv2.VideoCapture(self.camera_device)
+            # Try a reasonable resolution and MJPG for speed
+            try:
+                cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+            except Exception:
+                pass
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            cap.set(cv2.CAP_PROP_FPS, 20)
+            while not rospy.is_shutdown() and not self._cv_cam_stop.is_set():
+                ok, frame = cap.read()
+                if not ok or frame is None:
+                    time.sleep(0.05)
+                    continue
+                with self.lock:
+                    self.img_bgr = frame
+                    self.t_img = now()
+                # match roughly our loop rate without overloading CPU
+                time.sleep(max(0.0, self.dt * 0.8))
+        except Exception:
+            rospy.logwarn("[UMC] CV camera loop error:\n" + traceback.format_exc())
+        finally:
+            if cap is not None:
+                try:
+                    cap.release()
+                except Exception:
+                    pass
+
     def maybe_log(self, **kw):
         if self.log_rate.ready():
             s = json.dumps(kw, default=lambda o: str(o), separators=(",", ":"))
@@ -779,6 +824,8 @@ def parse_args(argv):
     ap.add_argument("--rf_period", type=float, default=0.33, help="Min seconds between Roboflow calls")
     ap.add_argument("--log_interval", type=float, default=1.0, help="Seconds between status logs")
     ap.add_argument("--debug_viz", action="store_true", help="Publish /umc/debug_image/compressed with overlays")
+    ap.add_argument("--cv_camera_fallback", action="store_true", help="Use OpenCV /dev/videoN if ROS camera is not available")
+    ap.add_argument("--camera_device", type=int, default=0, help="/dev/videoN index for CV camera fallback")
     return ap.parse_args(argv)
 
 def main():
@@ -791,7 +838,9 @@ def main():
         roboflow_model_id=args.roboflow_model_id if args.roboflow_model_id else None,
         rf_period=args.rf_period,
         log_interval=args.log_interval,
-        debug_viz=args.debug_viz
+    debug_viz=args.debug_viz,
+    cv_camera_fallback=args.cv_camera_fallback,
+    camera_device=args.camera_device
     )
     ctrl.spin()
 
