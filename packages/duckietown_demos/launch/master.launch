@@ -23,9 +23,9 @@
 
 	<group ns="$(arg veh)">
 		<!-- Camera -->
-		<include file="$(find duckiebot_interface)/launch/camera_node.launch">
-			<arg name="veh" value="$(arg veh)"/>
-		</include>
+		<include file="$(find camera)/launch/camera_node.launch">
+        <arg name="veh" value="$(arg veh)"/>
+        </include>
 
 		<!-- Anti Instagram -->
 		<remap from="anti_instagram_node/uncorrected_image/compressed" to="camera_node/image/compressed"/>

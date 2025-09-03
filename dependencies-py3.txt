@@ -28,8 +28,9 @@ dt-data-api>=2.1.0,<3
 numpy==1.20.0
 # pandas (pinned version is to avoid this: https://stackoverflowteams.com/c/duckietown/questions/2673)
 pandas==1.1.5
+PyYAML=5.3.1
 
 # ipython (not needed directly but we need to pin the latest version compatible with Python3.7)
 ipython==7.34.0
- pip install inference-sdk
- pip install --no-cache-dir onnxruntime
+inference-sdk
+onnxruntime

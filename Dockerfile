@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.7.0
 # parameters
 ARG EXERCISE_NAME="dt-core"
 ARG DESCRIPTION="Provides high-level autonomy and fleet-coordination capabilities"
@@ -10,7 +10,7 @@ ARG ARCH
 ARG DISTRO=daffy
 ARG DOCKER_REGISTRY=docker.io
 ARG BASE_IMAGE=challenge-aido_lf-baseline-duckietown-ml
-ARG BASE_TAG=${DISTRO}-${ARCH}
+ARG BASE_TAG=daffy-arm64v8
 ARG LAUNCHER=default
 
 # define base image
