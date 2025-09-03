@@ -58,7 +58,7 @@ def run(input, exception_on_failure=False):
 
 class Wrapper:
     def __init__(self, aido_eval=False):
-    if not TORCH_AVAILABLE:
+        if not TORCH_AVAILABLE:
             print("WARNING: PyTorch not available, creating dummy wrapper")
             self.model = None
             return

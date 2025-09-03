@@ -96,6 +96,25 @@ class SensorFusionEngine:
         
         # Temporal consistency checker
         self.consistency_checker = TemporalConsistencyChecker()
+
+    def _cleanup_old_data(self):
+        """Clean up old data from buffers based on max_data_age."""
+        current_time = time.time()
+        self.camera_buffer = [d for d in self.camera_buffer if current_time - d.timestamp < self.max_data_age]
+        self.imu_buffer = [d for d in self.imu_buffer if current_time - d.timestamp < self.max_data_age]
+        self.encoder_buffer = [d for d in self.encoder_buffer if current_time - d.timestamp < self.max_data_age]
+
+    def _assess_sensor_health(self):
+        """Assess sensor health based on buffer status and recency."""
+        current_time = time.time()
+        camera_health = len(self.camera_buffer) > 0 and (current_time - self.camera_buffer[-1].timestamp < 0.5 if self.camera_buffer else False)
+        imu_health = len(self.imu_buffer) > 0 and (current_time - self.imu_buffer[-1].timestamp < 0.5 if self.imu_buffer else False)
+        encoder_health = len(self.encoder_buffer) > 0 and (current_time - self.encoder_buffer[-1].timestamp < 0.5 if self.encoder_buffer else False)
+        return {
+            'camera': camera_health,
+            'imu': imu_health,
+            'encoder': encoder_health
+        }
     
     def add_camera_data(self, camera_data):
         """Add camera data to fusion buffer."""

@@ -31,3 +31,5 @@ pandas==1.1.5
 
 # ipython (not needed directly but we need to pin the latest version compatible with Python3.7)
 ipython==7.34.0
+ pip install inference-sdk
+ pip install --no-cache-dir onnxruntime

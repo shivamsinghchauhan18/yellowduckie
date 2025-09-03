@@ -12,6 +12,8 @@ from duckietown_msgs.srv import ChangePattern, ChangePatternRequest
 from lane_change_control.msg import LaneChangeRequest, LaneChangeStatus
 from std_msgs.msg import String, Header
 from geometry_msgs.msg import Point32
+from typing import Optional
+
 
 # Import enhanced feasibility assessment and trajectory generation
 import sys

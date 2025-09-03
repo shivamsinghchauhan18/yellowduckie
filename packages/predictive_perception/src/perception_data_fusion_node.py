@@ -2,456 +2,322 @@
 
 import rospy
 import numpy as np
-from duckietown.dtros import DTROS, NodeType
+from duckietown.dtros import DTROS, NodeType, TopicType, DTParam, ParamType
+from duckietown_msgs.msg import Twist2DStamped, BoolStamped, LanePose
+from std_msgs.msg import Header, Int8, Empty, Bool
 
-# Standard ROS messages
-from std_msgs.msg import Header, String, Float32
-from sensor_msgs.msg import Imu, CompressedImage
-from duckietown_msgs.msg import Twist2DStamped, LanePose
+from lane_controller.controller import LaneController
 
-# Internal modules
-from predictive_perception.sensor_fusion import (
-    SensorFusionEngine, 
-    CameraData, 
-    IMUData, 
-    EncoderData,
-    FusedPerceptionData
-)
+from duckietown_msgs.msg import AprilTagDetectionArray, AprilTagDetection
 
 
-class PerceptionDataFusionNode(DTROS):
+class LaneControllerNode(DTROS):
+    """Computes control action.
+    The node compute the commands in form of linear and angular velocities, by processing the estimate error in
+    lateral deviationa and heading.
+    The configuration parameters can be changed dynamically while the node is running via ``rosparam set`` commands.
+    Args:
+        node_name (:obj:`str`): a unique, descriptive name for the node that ROS will use
+    Configuration:
+        ~v_bar (:obj:`float`): Nominal velocity in m/s
+        ~k_d (:obj:`float`): Proportional term for lateral deviation
+        ~k_theta (:obj:`float`): Proportional term for heading deviation
+        ~k_Id (:obj:`float`): integral term for lateral deviation
+        ~k_Iphi (:obj:`float`): integral term for lateral deviation
+        ~d_thres (:obj:`float`): Maximum value for lateral error
+        ~theta_thres (:obj:`float`): Maximum value for heading error
+        ~d_offset (:obj:`float`): Goal offset from center of the lane
+        ~integral_bounds (:obj:`dict`): Bounds for integral term
+        ~d_resolution (:obj:`float`): Resolution of lateral position estimate
+        ~phi_resolution (:obj:`float`): Resolution of heading estimate
+        ~omega_ff (:obj:`float`): Feedforward part of controller
+        ~verbose (:obj:`bool`): Verbosity level (0,1,2)
+        ~stop_line_slowdown (:obj:`dict`): Start and end distances for slowdown at stop lines
+
+    Publisher:
+        ~car_cmd (:obj:`Twist2DStamped`): The computed control action
+    Subscribers:
+        ~lane_pose (:obj:`LanePose`): The lane pose estimate from the lane filter
+        ~intersection_navigation_pose (:obj:`LanePose`): The lane pose estimate from intersection navigation
+        ~wheels_cmd_executed (:obj:`WheelsCmdStamped`): Confirmation that the control action was executed
+        ~stop_line_reading (:obj:`StopLineReading`): Distance from stopline, to reduce speed
+        ~obstacle_distance_reading (:obj:`stop_line_reading`): Distancefrom obstacle virtual stopline, to reduce speed
     """
-    Perception Data Fusion Node for combining camera, IMU, and encoder data.
-    
-    This node provides:
-    - Multi-modal sensor fusion
-    - Temporal consistency checks
-    - Outlier detection and filtering
-    - Unified perception output with confidence metrics
-    """
-    
+
     def __init__(self, node_name):
-        super(PerceptionDataFusionNode, self).__init__(
-            node_name=node_name, 
-            node_type=NodeType.PERCEPTION
-        )
-        
-        # Initialize parameters
-        self.veh = rospy.get_param("~veh", "duckiebot")
-        self.fusion_rate = rospy.get_param("~fusion_rate", 20.0)
-        self.fusion_window = rospy.get_param("~fusion_window", 0.1)
-        self.max_data_age = rospy.get_param("~max_data_age", 1.0)
-        
-        # Sensor weights
-        self.camera_weight = rospy.get_param("~camera_weight", 0.6)
-        self.imu_weight = rospy.get_param("~imu_weight", 0.3)
-        self.encoder_weight = rospy.get_param("~encoder_weight", 0.1)
-        
-        # Initialize fusion engine
-        self.fusion_engine = SensorFusionEngine(
-            fusion_window=self.fusion_window,
-            max_data_age=self.max_data_age
-        )
-        
-        # Set fusion weights
-        self.fusion_engine.camera_weight = self.camera_weight
-        self.fusion_engine.imu_weight = self.imu_weight
-        self.fusion_engine.encoder_weight = self.encoder_weight
-        
-        # Data storage
-        self.last_encoder_ticks = {'left': 0, 'right': 0}
-        self.last_encoder_time = None
-        
-        # Publishers
-        self.pub_fused_perception = rospy.Publisher(
-            "~fused_perception", 
-            String,  # Would be custom FusedPerceptionData message in full implementation
-            queue_size=1
-        )
-        self.pub_confidence_metrics = rospy.Publisher(
-            "~confidence_metrics", 
-            String, 
-            queue_size=1
-        )
-        self.pub_sensor_health = rospy.Publisher(
-            "~sensor_health", 
-            String, 
-            queue_size=1
-        )
-        self.pub_ego_motion = rospy.Publisher(
-            "~ego_motion", 
-            Twist2DStamped, 
-            queue_size=1
-        )
-        
-        # Subscribers
-        
-        # Camera data (enhanced detections from object detection)
-        self.sub_camera_detections = rospy.Subscriber(
-            f"/{self.veh}/enhanced_object_detection_node/enhanced_detections",
-            String,
-            self.camera_detections_callback,
-            queue_size=1
-        )
-        
-        # Lane pose from lane filter
-        self.sub_lane_pose = rospy.Subscriber(
-            f"/{self.veh}/lane_filter_node/lane_pose",
-            LanePose,
-            self.lane_pose_callback,
-            queue_size=1
-        )
-        
-        # IMU data
-        self.sub_imu = rospy.Subscriber(
-            f"/{self.veh}/imu_node/data",
-            Imu,
-            self.imu_callback,
-            queue_size=10
-        )
-        
-        # Wheel encoder data (simulated from wheel commands)
-        self.sub_wheel_encoders = rospy.Subscriber(
-            f"/{self.veh}/wheel_encoder_node/ticks",
-            String,  # Placeholder - would be WheelEncoderStamped message
-            self.encoder_callback,
-            queue_size=10
-        )
-        
-        # Car command for encoder simulation
-        self.sub_car_cmd = rospy.Subscriber(
-            f"/{self.veh}/car_cmd_switch_node/cmd",
-            Twist2DStamped,
-            self.car_cmd_callback,
-            queue_size=1
-        )
-        
-        # Timer for fusion processing
-        self.fusion_timer = rospy.Timer(
-            rospy.Duration(1.0 / self.fusion_rate), 
-            self.fusion_timer_callback
-        )
-        
-        # Storage for latest sensor data
-        self.latest_detections = []
-        self.latest_lane_pose = None  # type: Optional[LanePose]
-        self.latest_car_cmd = None
-        
-        self.loginfo("Perception Data Fusion Node initialized")
-    
-    def camera_detections_callback(self, msg):
-        """Process camera detection data."""
-        try:
-            # Parse detection data from string message
-            # In full implementation, would parse custom DetectionArray message
-            detections = self.parse_detection_string(msg.data)
-            
-            # Create camera data object
-            camera_data = CameraData(
-                timestamp=rospy.Time.now().to_sec(),
-                detections=detections,
-                lane_pose=self.latest_lane_pose,
-                confidence=self.calculate_camera_confidence(detections)
-            )
-            
-            # Add to fusion engine
-            self.fusion_engine.add_camera_data(camera_data)
-            
-        except Exception as e:
-            self.logerr(f"Error in camera detections callback: {e}")
-    
-    def lane_pose_callback(self, msg: LanePose):
-        """Process lane pose data."""
-        try:
-            # Store latest LanePose message
-            self.latest_lane_pose = msg
-            
-        except Exception as e:
-            self.logerr(f"Error in lane pose callback: {e}")
-    
-    def imu_callback(self, msg):
-        """Process IMU data."""
-        try:
-            # Extract IMU data
-            angular_velocity = [
-                msg.angular_velocity.x,
-                msg.angular_velocity.y,
-                msg.angular_velocity.z
-            ]
-            
-            linear_acceleration = [
-                msg.linear_acceleration.x,
-                msg.linear_acceleration.y,
-                msg.linear_acceleration.z
-            ]
-            
-            # Create IMU data object
-            imu_data = IMUData(
-                timestamp=msg.header.stamp.to_sec(),
-                angular_velocity=angular_velocity,
-                linear_acceleration=linear_acceleration,
-                confidence=self.calculate_imu_confidence(msg)
-            )
-            
-            # Add to fusion engine
-            self.fusion_engine.add_imu_data(imu_data)
-            
-        except Exception as e:
-            self.logerr(f"Error in IMU callback: {e}")
-    
-    def encoder_callback(self, msg):
-        """Process wheel encoder data."""
-        try:
-            # Parse encoder ticks from string message
-            # In full implementation, would parse WheelEncoderStamped message
-            ticks = self.parse_encoder_string(msg.data)
-            
-            # Create encoder data object
-            encoder_data = EncoderData(
-                timestamp=rospy.Time.now().to_sec(),
-                left_ticks=ticks['left'],
-                right_ticks=ticks['right'],
-                confidence=0.9  # High confidence for encoder data
-            )
-            
-            # Add to fusion engine
-            self.fusion_engine.add_encoder_data(encoder_data)
-            
-        except Exception as e:
-            self.logerr(f"Error in encoder callback: {e}")
-    
-    def car_cmd_callback(self, msg):
-        """Process car command for encoder simulation."""
-        try:
-            # Store latest car command
-            self.latest_car_cmd = msg
-            
-            # Simulate encoder data from car commands
-            self.simulate_encoder_data(msg)
-            
-        except Exception as e:
-            self.logerr(f"Error in car command callback: {e}")
-    
-    def fusion_timer_callback(self, event):
-        """Perform sensor fusion at regular intervals."""
-        try:
-            # Perform sensor fusion
-            fused_data = self.fusion_engine.fuse_sensor_data()
-            
-            if fused_data:
-                # Publish fused perception data
-                self.publish_fused_perception(fused_data)
-                
-                # Publish confidence metrics
-                self.publish_confidence_metrics(fused_data.confidence_metrics)
-                
-                # Publish sensor health
-                self.publish_sensor_health(fused_data.sensor_health)
-                
-                # Publish ego motion
-                self.publish_ego_motion(fused_data.ego_motion)
-            
-        except Exception as e:
-            self.logerr(f"Error in fusion timer callback: {e}")
-    
-    def parse_detection_string(self, detection_str):
-        """Parse detection data from string message."""
-        detections = []
-        
-        if not detection_str.strip():
-            return detections
-        
-        # Parse detection string format: "class:duck, conf:0.8, center:(100,200), area:5000, priority:0.9"
-        detection_parts = detection_str.split(" | ")
-        
-        for part in detection_parts:
-            try:
-                detection = {}
-                attributes = part.split(", ")
-                
-                for attr in attributes:
-                    if ":" in attr:
-                        key, value = attr.split(":", 1)
-                        
-                        if key == "class":
-                            detection['class_name'] = value
-                        elif key == "conf":
-                            detection['confidence'] = float(value)
-                        elif key == "center":
-                            # Parse center coordinates
-                            coords = value.strip("()").split(",")
-                            detection['center'] = (float(coords[0]), float(coords[1]))
-                        elif key == "area":
-                            detection['area'] = float(value)
-                        elif key == "priority":
-                            detection['priority'] = float(value)
-                
-                if detection:
-                    detections.append(detection)
-                    
-            except Exception as e:
-                self.logwarn(f"Error parsing detection part '{part}': {e}")
-        
-        return detections
-    
-    def parse_encoder_string(self, encoder_str):
-        """Parse encoder data from string message."""
-        # Placeholder for encoder string parsing
-        return {'left': 0, 'right': 0}
-    
-    def simulate_encoder_data(self, car_cmd):
-        """Simulate encoder data from car commands."""
-        try:
-            current_time = rospy.Time.now().to_sec()
-            
-            if self.last_encoder_time is None:
-                self.last_encoder_time = current_time
-                return
-            
-            dt = current_time - self.last_encoder_time
-            
-            # Calculate wheel velocities from car command
-            v = car_cmd.v  # Linear velocity
-            omega = car_cmd.omega  # Angular velocity
-            
-            # Differential drive kinematics
-            wheel_base = 0.1  # meters
-            v_left = v - (omega * wheel_base / 2.0)
-            v_right = v + (omega * wheel_base / 2.0)
-            
-            # Convert to encoder ticks
-            wheel_radius = 0.0318  # meters
-            ticks_per_revolution = 135
-            
-            ticks_per_meter = ticks_per_revolution / (2 * np.pi * wheel_radius)
-            
-            left_ticks = self.last_encoder_ticks['left'] + int(v_left * dt * ticks_per_meter)
-            right_ticks = self.last_encoder_ticks['right'] + int(v_right * dt * ticks_per_meter)
-            
-            # Create encoder data
-            encoder_data = EncoderData(
-                timestamp=current_time,
-                left_ticks=left_ticks,
-                right_ticks=right_ticks,
-                confidence=0.95
-            )
-            
-            # Add to fusion engine
-            self.fusion_engine.add_encoder_data(encoder_data)
-            
-            # Update state
-            self.last_encoder_ticks = {'left': left_ticks, 'right': right_ticks}
-            self.last_encoder_time = current_time
-            
-        except Exception as e:
-            self.logerr(f"Error simulating encoder data: {e}")
-    
-    def calculate_camera_confidence(self, detections):
-        """Calculate confidence for camera data based on detections."""
-        if not detections:
-            return 0.5
-        
-        # Average confidence of all detections
-        avg_confidence = np.mean([det.get('confidence', 0.5) for det in detections])
-        
-        # Boost confidence if multiple detections
-        detection_boost = min(len(detections) * 0.1, 0.3)
-        
-        return min(avg_confidence + detection_boost, 1.0)
-    
-    def calculate_imu_confidence(self, imu_msg):
-        """Calculate confidence for IMU data."""
-        # Check for reasonable acceleration and angular velocity values
-        accel_magnitude = np.sqrt(
-            imu_msg.linear_acceleration.x**2 + 
-            imu_msg.linear_acceleration.y**2 + 
-            imu_msg.linear_acceleration.z**2
-        )
-        
-        angular_magnitude = np.sqrt(
-            imu_msg.angular_velocity.x**2 + 
-            imu_msg.angular_velocity.y**2 + 
-            imu_msg.angular_velocity.z**2
-        )
-        
-        # Reasonable ranges for Duckiebot
-        if 8.0 < accel_magnitude < 12.0 and angular_magnitude < 5.0:
-            return 0.9
-        else:
-            return 0.6
-    
-    def publish_fused_perception(self, fused_data):
-        """Publish fused perception data."""
-        msg = String()
-        
-        # Format fused data as string
-        data_str = (
-            f"timestamp: {fused_data.timestamp:.3f}, "
-            f"objects: {len(fused_data.objects)}, "
-            f"ego_motion_confidence: {fused_data.ego_motion.get('confidence', 0.0):.3f}"
-        )
-        
-        if fused_data.objects:
-            object_info = []
-            for obj in fused_data.objects:
-                obj_str = f"{obj.get('class_name', 'unknown')}({obj.get('confidence', 0.0):.2f})"
-                object_info.append(obj_str)
-            data_str += f", detected_objects: [{', '.join(object_info)}]"
-        
-        msg.data = data_str
-        self.pub_fused_perception.publish(msg)
-    
-    def publish_confidence_metrics(self, confidence_metrics):
-        """Publish confidence metrics."""
-        msg = String()
-        
-        metrics_str = (
-            f"overall: {confidence_metrics.get('overall_confidence', 0.0):.3f}, "
-            f"completeness: {confidence_metrics.get('data_completeness', 0.0):.3f}, "
-            f"agreement: {confidence_metrics.get('sensor_agreement', 0.0):.3f}, "
-            f"consistency: {confidence_metrics.get('temporal_consistency', 0.0):.3f}"
-        )
-        
-        msg.data = metrics_str
-        self.pub_confidence_metrics.publish(msg)
-    
-    def publish_sensor_health(self, sensor_health):
-        """Publish sensor health status."""
-        msg = String()
-        
-        health_info = []
-        for sensor, health in sensor_health.items():
-            health_str = f"{sensor}: {health['status']}({health['confidence']:.2f})"
-            health_info.append(health_str)
-        
-        msg.data = ", ".join(health_info)
-        self.pub_sensor_health.publish(msg)
-    
-    def publish_ego_motion(self, ego_motion):
-        """Publish ego motion estimate."""
-        if not ego_motion:
+
+        # Initialize the DTROS parent class
+        super(LaneControllerNode, self).__init__(node_name=node_name, node_type=NodeType.PERCEPTION)
+
+        # Add the node parameters to the parameters dictionary
+        self.params = dict()
+        self.params["~v_bar"] = DTParam("~v_bar", param_type=ParamType.FLOAT, min_value=0.0, max_value=1.0)
+        self.params["~k_d"] = DTParam("~k_d", param_type=ParamType.FLOAT, min_value=-10.0, max_value=10.0)
+        self.params["~k_theta"] = DTParam("~k_theta", param_type=ParamType.FLOAT, min_value=-10.0, max_value=10.0)
+        self.params["~k_Id"] = DTParam("~k_Id", param_type=ParamType.FLOAT, min_value=-10.0, max_value=10.0)
+        self.params["~k_Iphi"] = DTParam("~k_Iphi", param_type=ParamType.FLOAT, min_value=-10.0, max_value=10.0)
+        self.params["~d_thres"] = DTParam("~d_thres", param_type=ParamType.FLOAT, min_value=0.0, max_value=2.0)
+        self.params["~theta_thres"] = DTParam("~theta_thres", param_type=ParamType.FLOAT, min_value=0.0, max_value=np.pi/2)
+        self.params["~d_offset"] = DTParam("~d_offset", param_type=ParamType.FLOAT, min_value=-1.0, max_value=1.0)
+        self.params["~integral_bounds"] = DTParam("~integral_bounds", param_type=ParamType.DICT)
+        self.params["~d_resolution"] = DTParam("~d_resolution", param_type=ParamType.FLOAT, min_value=0.0, max_value=1.0)
+        self.params["~phi_resolution"] = DTParam("~phi_resolution", param_type=ParamType.FLOAT, min_value=0.0, max_value=np.pi/2)
+        self.params["~omega_ff"] = DTParam("~omega_ff", param_type=ParamType.FLOAT, min_value=0.0, max_value=10.0)
+        self.params["~verbose"] = DTParam("~verbose", param_type=ParamType.BOOL)
+        self.params["~stop_line_slowdown"] = DTParam("~stop_line_slowdown", param_type=ParamType.DICT)
+        self.params["~use_LEDs"] = DTParam("~use_LEDs", param_type=ParamType.BOOL)
+
+        # default integral control bounds
+        self.params["~integral_bounds"].value = dict()
+        self.params["~integral_bounds"].value["top"] = 10.0
+        self.params["~integral_bounds"].value["bottom"] = -10.0
+
+        # default stop line slowdown parameters
+        self.params["~stop_line_slowdown"].value = dict()
+        self.params["~stop_line_slowdown"].value["start"] = 0.6
+        self.params["~stop_line_slowdown"].value["end"] = 0.2
+
+        # initialize controller
+        self.controller = LaneController(self.params)
+        self.controller.verbose = self.params["~verbose"].value
+
+        # initialize variables
+        self.last_omega = 0.0
+        self.last_s = None
+        self.stop_line_distance = -1
+        self.at_stop_line = False
+        self.obstacle_stop_line_distance = -1
+        self.obstacle_stop_line_detected = False
+        self.at_obstacle_stop_line = False
+        self.stop_line_slowdown_active = False
+        self.april_tags_active = False
+        self.stop_line_car_cmd = Twist2DStamped()
+        self.stop_line_car_cmd.v = 0.0
+        self.stop_line_car_cmd.omega = 0.0
+        self.pose_msg = None
+        self.intersection_navigation_pose_msg = None
+        self.intersection_navigation_active = False
+        self.intersection_navigation_pose_msg = LanePose()
+        self.intersection_navigation_pose_msg.header.stamp = rospy.Time.now()
+        self.intersection_navigation_pose_msg.header.frame_id = "lane_filter"
+        self.intersection_navigation_pose_msg.d = 0.0
+        self.intersection_navigation_pose_msg.phi = 0.0
+        self.intersection_navigation_pose_msg.d_ref = 0.0
+        self.intersection_navigation_pose_msg.phi_ref = 0.0
+        self.intersection_navigation_pose_msg.d_phi_covariance = [0.0, 0.0, 0.0, 0.0]
+        self.intersection_navigation_pose_msg.curvature = 0.0
+        self.intersection_navigation_pose_msg.curvature_ref = 0.0
+        self.intersection_navigation_pose_msg.v_ref = 0.0
+        self.intersection_navigation_pose_msg.status = 0
+        self.intersection_navigation_pose_msg.in_lane = True
+        self.intersection_navigation_pose_msg = None
+        self.intersection_navigation_active = False
+        self.intersection_navigation_pose_msg = LanePose()
+        self.intersection_navigation_pose_msg.header.stamp = rospy.Time.now()
+        self.intersection_navigation_pose_msg.header.frame_id = "lane_filter"
+        self.intersection_navigation_pose_msg.d = 0.0
+        self.intersection_navigation_pose_msg.phi = 0.0
+        self.intersection_navigation_pose_msg.d_ref = 0.0
+        self.intersection_navigation_pose_msg.phi_ref = 0.0
+        self.intersection_navigation_pose_msg.d_phi_covariance = [0.0, 0.0, 0.0, 0.0]
+        self.intersection_navigation_pose_msg.curvature = 0.0
+        self.intersection_navigation_pose_msg.curvature_ref = 0.0
+        self.intersection_navigation_pose_msg.v_ref = 0.0
+        self.intersection_navigation_pose_msg.status = 0
+        self.intersection_navigation_pose_msg.in_lane = True
+        self.wheels_cmd_executed = WheelsCmdStamped()
+        self.wheels_cmd_executed.vel_left = 0.0
+        self.wheels_cmd_executed.vel_right = 0.0
+        self.drive_running = False
+
+        # initialize times
+        self.t_delta_s = 0.0
+        self.t_prev_s = rospy.Time.now().to_sec()
+
+        # subscribers
+        self.sub_lane_reading = rospy.Subscriber("~lane_pose", LanePose, self.cb_pose, queue_size=1)
+        self.sub_intersection_navigation_pose = rospy.Subscriber("~intersection_navigation_pose", LanePose, self.cb_intersection_navigation_pose, queue_size=1)
+        self.sub_wheels_cmd_executed = rospy.Subscriber("~wheels_cmd_executed", WheelsCmdStamped, self.cb_wheels_cmd_executed, queue_size=1)
+        self.sub_stop_line_reading = rospy.Subscriber("~stop_line_reading", StopLineReading, self.cb_stop_line_reading, queue_size=1)
+        self.sub_obstacle_distance_reading = rospy.Subscriber("~obstacle_distance_reading", StopLineReading, self.cb_obstacle_distance_reading, queue_size=1)
+        self.sub_vehicle_centers = rospy.Subscriber("~vehicle_centers", VehicleCorners, self.cb_vehicle_centers, queue_size=1)
+        self.sub_apriltag_detections = rospy.Subscriber("~apriltag_detections", AprilTagDetectionArray, self.cb_apriltag_detections, queue_size=1)
+        self.sub_turn_type = rospy.Subscriber("~turn_type", Int8, self.cb_turn_type, queue_size=1)
+        self.sub_intersection_go = rospy.Subscriber("~intersection_go", BoolStamped, self.cb_intersection_go, queue_size=1)
+        self.sub_vehicle_detected = rospy.Subscriber("~vehicle_detected", BoolStamped, self.cb_vehicle_detected, queue_size=1)
+        self.sub_obstacle_detected = rospy.Subscriber("~obstacle_detected", BoolStamped, self.cb_obstacle_detected, queue_size=1)
+
+        # publishers
+        self.pub_car_cmd = rospy.Publisher("~car_cmd", Twist2DStamped, queue_size=1)
+
+        # services
+        if self.params["~use_LEDs"].value:
+            rospy.loginfo(f"[{self.node_name}] Waiting for LED emitter service...")
+            rospy.wait_for_service("~set_pattern")
+            self.led_svc = rospy.ServiceProxy("~set_pattern", ChangePattern)
+
+        self.loginfo("Initialized")
+
+    def cb_pose(self, pose_msg):
+        self.pose_msg = pose_msg
+
+    def cb_intersection_navigation_pose(self, pose_msg):
+        self.intersection_navigation_pose_msg = pose_msg
+
+    def cb_wheels_cmd_executed(self, msg):
+        self.wheels_cmd_executed = msg
+
+    def cb_stop_line_reading(self, msg):
+        self.stop_line_distance = msg.stop_line_point.x
+        self.at_stop_line = msg.at_stop_line
+        self.stop_line_detected = msg.stop_line_detected
+
+    def cb_obstacle_distance_reading(self, msg):
+        self.obstacle_stop_line_distance = msg.stop_line_point.x
+        self.at_obstacle_stop_line = msg.at_stop_line
+        self.obstacle_stop_line_detected = msg.stop_line_detected
+
+    def cb_vehicle_centers(self, msg):
+        self.vehicle_centers = msg.centers
+        self.vehicle_detected = len(self.vehicle_centers) > 0
+
+    def cb_apriltag_detections(self, msg):
+        self.april_tags_active = len(msg.detections) > 0
+        self.april_tags = msg.detections
+
+    def cb_turn_type(self, msg):
+        self.turn_type = msg.data
+
+    def cb_intersection_go(self, msg):
+        self.intersection_go = msg.data
+
+    def cb_vehicle_detected(self, msg):
+        self.vehicle_detected = msg.data
+
+    def cb_obstacle_detected(self, msg):
+        self.obstacle_detected = msg.data
+
+    def publishCmd(self, car_cmd_msg):
+        self.pub_car_cmd.publish(car_cmd_msg)
+
+    def drive(self):
+        # Get current time
+        current_s = rospy.Time.now().to_sec()
+        # Get elapsed time
+        self.t_delta_s = current_s - self.t_prev_s
+        # Save time
+        self.t_prev_s = current_s
+
+        # Get pose msg
+        pose_msg = self.pose_msg
+
+        # Check if we have a pose msg
+        if pose_msg is None:
             return
-        
-        msg = Twist2DStamped()
-        msg.header.stamp = rospy.Time.now()
-        msg.header.frame_id = "base_link"
-        
-        msg.v = ego_motion.get('linear_velocity', 0.0)
-        msg.omega = ego_motion.get('angular_velocity', 0.0)
-        
-        self.pub_ego_motion.publish(msg)
-    
-    def get_fusion_status(self):
-        """Get current fusion status for diagnostics."""
-        return {
-            'camera_buffer_size': len(self.fusion_engine.camera_buffer),
-            'imu_buffer_size': len(self.fusion_engine.imu_buffer),
-            'encoder_buffer_size': len(self.fusion_engine.encoder_buffer),
-            'fusion_rate': self.fusion_rate,
-            'fusion_window': self.fusion_window
-        }
+
+        # Check if we are in intersection navigation mode
+        if self.intersection_navigation_pose_msg is not None:
+            pose_msg = self.intersection_navigation_pose_msg
+            self.intersection_navigation_active = True
+        else:
+            self.intersection_navigation_active = False
+
+        # Check if we are at a stop line
+        if self.stop_line_distance > 0:
+            self.stop_line_slowdown_active = True
+        else:
+            self.stop_line_slowdown_active = False
+
+        # Check if we are at an obstacle stop line
+        if self.obstacle_stop_line_distance > 0:
+            self.obstacle_stop_line_detected = True
+        else:
+            self.obstacle_stop_line_detected = False
+
+        # Check if we are at a vehicle stop line
+        if self.vehicle_detected:
+            self.vehicle_stop_line_detected = True
+        else:
+            self.vehicle_stop_line_detected = False
+
+        # Check if we are at an obstacle stop line
+        if self.obstacle_detected:
+            self.obstacle_stop_line_detected = True
+        else:
+            self.obstacle_stop_line_detected = False
+
+        # Check if we are at a stop line
+        if self.at_stop_line:
+            # Stop the car
+            car_stop_msg = Twist2DStamped()
+            car_stop_msg.v = 0
+            car_stop_msg.omega = 0
+
+            # Stop turn
+            self.publishCmd(car_stop_msg)
+            rospy.loginfo("    Stopping turn")
+
+            # Change the LED back to the driving state
+            if self.params["~use_LEDs"].value:
+                rospy.loginfo(f"    Changing LEDS back to driving mode")
+                if self.led_svc is not None:
+                    msg = ChangePatternRequest(String("CAR_DRIVING"))
+                    try:
+                        resp = self.led_svc(msg)
+                    except rospy.ServiceException as e:
+                        rospy.logwarn(f"could not set LEDs: {e}")
+
+        if not self.at_obstacle_stop_line:  # Lane following
+            # Compute errors
+            d_err = pose_msg.d - self.params["~d_offset"].value
+            phi_err = pose_msg.phi
+
+            # We cap the error if it grows too large
+            if np.abs(d_err) > self.params["~d_thres"].value:
+                self.log("d_err too large, thresholding it!", "error")
+                d_err = np.sign(d_err) * self.params["~d_thres"].value
+
+            wheels_cmd_exec = [self.wheels_cmd_executed.vel_left, self.wheels_cmd_executed.vel_right]
+            if self.obstacle_stop_line_detected:
+                v, omega = self.controller.compute_control_action(
+                    d_err, phi_err, self.t_delta_s, wheels_cmd_exec,
+                    self.obstacle_stop_line_distance, pose_msg
+                )
+                # TODO: This is a temporarily fix to avoid vehicle image
+                # detection latency caused unable to stop in time.
+                v = v * 0.25
+                omega = omega * 0.25
+
+            else:
+                v, omega = self.controller.compute_control_action(
+                    d_err, phi_err, self.t_delta_s, wheels_cmd_exec,
+                    self.stop_line_distance, pose_msg
+                )
+
+            # Initialize car control msg, add header from input message
+            car_control_msg = Twist2DStamped()
+            car_control_msg.header = pose_msg.header
+
+            # Add commands to car message
+            car_control_msg.v = v
+            car_control_msg.omega = omega
+
+            self.publishCmd(car_control_msg)
+
+        # Set the current time stamp, needed for lane following
+        # Important: this needs to be set whether we're doing lane following or
+        # intersection navigation, otherwise when we go back to lane following
+        # from intersection navigation the first step of lane following will
+        # break
+        self.last_s = current_s
+        self.drive_running = False
 
 
 if __name__ == "__main__":
-    node = PerceptionDataFusionNode("perception_data_fusion_node")
-    rospy.spin()
+    # Initialize the node
+    rospy.sleep(5)
+    node = LaneControllerNode(node_name="lane_controller_node")
+    rate = rospy.Rate(10)
+    while not rospy.is_shutdown():
+        node.drive()
+        rate.sleep()

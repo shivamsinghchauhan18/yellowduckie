@@ -1,485 +1,232 @@
-<?xml version="1.0" encoding="utf-8"?>
 <launch>
-    <!-- 
-    ========================================================================
-    DUCKIETOWN ADVANCED SAFE NAVIGATION - MASTER LAUNCH FILE
-    ========================================================================
-    
-    This launch file orchestrates the complete advanced autonomous navigation
-    system with intelligent defaults for full functionality out-of-the-box.
-    
-    🚀 INTELLIGENT DEFAULTS STRATEGY:
-    
-    ✅ ENABLED BY DEFAULT (Essential for Advanced Navigation):
-    - Complete lane following pipeline (line detection → control)
-    - Vehicle detection and avoidance (safety critical)
-    - AprilTag detection (intersection navigation)
-    - Object detection (enhanced perception)
-    - LED communication system (safety signaling)
-    - Anti-instagram (lighting adaptation)
-    - Advanced safety systems (emergency stop, collision detection)
-    - Enhanced perception (predictive tracking, scene understanding)
-    - Adaptive speed control (environmental adaptation)
-    - Dynamic lane changing (traffic rules compliant)
-    - System monitoring and diagnostics
-    - Visualization (development and debugging)
-    
-    ❌ DISABLED BY DEFAULT (Optional/Manual):
-    - Camera raw/rectified modes (performance optimization)
-    - LED joystick control (manual override)
-    - AIDO evaluation mode (competition specific)
-    - Camera mock (simulation only)
-    
-    🎯 USAGE:
-    Full Advanced System: roslaunch duckietown_demos master.launch veh:=<robot_name>
-    Baseline Only: Add advanced_safety_system:=false enhanced_perception_system:=false
-    
-    ========================================================================
-    -->
-    
-	<!-- start args TODO: most things here should come from node's config files!-->
-	<arg name="veh" default="$(env VEHICLE_NAME)"
-         doc="The name of the robot (e.g., autobot01, watchtower02, ...)"/>
-    <arg name="robot_type" default="$(env ROBOT_TYPE)"
-         doc="The type of the robot (e.g., duckiebot, watchtower, traffic_light, ...)"/>
-    <arg name="robot_configuration" default="$(env ROBOT_CONFIGURATION)"
-         doc="The configuration of the robot (e.g., DB19, DB20, WT18, ...)"/>
-    <arg name="demo_name" default="advanced_safe_navigation"/> <!-- Enhanced demo with safety features -->
-	<arg name="config" default="advanced" doc="Configuration profile: baseline, advanced, or custom"/>
-	<arg name="camera_topic" default="camera_node"/>
-	<arg name="param_file_name" default="default" />
-	<arg name="apriltags_param_file_name" default="$(arg param_file_name)" />
-	<arg name="verbose" default="true" doc="Enable verbose output for debugging and monitoring"/>
-	<arg name="ai_trafo_mode" default="cb" doc="'cb' for colo balance only; 'both' for color balance and linear trafo"/>
-	<arg name="ai_interval" default="5" doc="interval with which the linear trafo gets updated. color balance is performed every second."/>
+	<arg name="veh" default="$(env VEHICLE_NAME)"/>
+	<arg name="param_file_name" default="default"/>
 	<arg name="line_detector_param_file_name" default="$(arg param_file_name)"/>
-	<arg name="intersectionType" default= "stopSign"/>
+	<arg name="robot_type" default="$(env ROBOT_TYPE)"/>
+	<arg name="robot_configuration" default="$(env ROBOT_CONFIGURATION)"/>
+	<arg name="demo_name" default="lane_following"/>
+	<arg name="config" default="baseline"/>
+	<arg name="camera_topic" default="camera_node"/>
+	<arg name="apriltags_param_file_name" default="$(arg param_file_name)"/>
+	<arg name="verbose" default="false"/>
+	<arg name="ai_trafo_mode" default="cb"/>
+	<arg name="ai_interval" default="5"/>
+	<arg name="intersectionType" default="stopSign"/>
+    <arg name="use_ml_lane" default="false"/>
+    <arg name="onnx_model_path" default="/assets/nn_models/lane_following.onnx"/>
+	<arg name="use_adaptive_speed" default="false"/>
 
-	<!-- end args -->
+	<!-- Roboflow A/B toggles -->
+	<arg name="use_roboflow_det" default="false"/>
+	<arg name="roboflow_api_key" default="$(env ROBOFLOW_API_KEY)"/>
+	<arg name="roboflow_model_id" default="object-detection-dataset-ywlek/1"/>
 
-    <!-- start switch args -->
-    <!-- ========== CAMERA SYSTEM (REQUIRED) ========== -->
-    <arg name="camera" default="true" doc="Enable camera node for image capture"/>
-    <arg name="camera_mock" default="false" doc="Use mock camera for simulation"/>
-    <arg name="external_camera" default="false" doc="If true, do NOT launch a camera here; assume an external (official Duckietown) camera_node is already running."/>
-    <arg name="/camera/raw" default="false"/>
-    <arg name="/camera/rect" default="false"/>
+	<group ns="$(arg veh)">
+		<!-- Camera -->
+		<include file="$(find duckiebot_interface)/launch/camera_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+		</include>
 
-    <!-- Camera configuration (forwarded to camera_node.launch) -->
-    <arg name="camera_type" default="auto" doc="auto, pi, usb, jetson_csi"/>
-    <arg name="framerate" default="30" doc="Camera frame rate (Hz)"/>
-    <arg name="res_w" default="640" doc="Camera resolution width"/>
-    <arg name="res_h" default="480" doc="Camera resolution height"/>
-    <arg name="exposure_mode" default="auto" doc="Camera exposure mode"/>
-    <arg name="flip_method" default="0" doc="Jetson: nvvidconv flip-method (0..7)"/>
-    <arg name="sensor_mode" default="" doc="Jetson: nvarguscamerasrc sensor-mode (empty for default)"/>
+		<!-- Anti Instagram -->
+		<remap from="anti_instagram_node/uncorrected_image/compressed" to="camera_node/image/compressed"/>
+		<include file="$(find anti_instagram)/launch/anti_instagram_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+		</include>
 
-    <!-- Enable anti-instagram for better color correction in varying lighting -->
-    <arg name="anti_instagram" default="true"/>
+		<!-- Line Detector -->
+		<remap from="line_detector_node/thresholds" to="anti_instagram_node/thresholds"/>
+		<remap from="line_detector_node/image/compressed" to="camera_node/image/compressed"/>
+		<include file="$(find line_detector)/launch/line_detector_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+			<arg name="param_file_name" value="$(arg line_detector_param_file_name)"/>
+		</include>
 
-    <!-- Enable visualization for development and debugging -->
-    <arg name="visualization" default="true" />
+		<!-- Ground Projection -->
+		<remap from="~lineseglist_in" to="line_detector_node/segment_list"/>
+		<remap from="~cali_image" to="$(arg camera_topic)/image/raw"/>
+		<remap from="~camera_info" to="$(arg camera_topic)/camera_info"/>
+		<include file="$(find ground_projection)/launch/ground_projection_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+			<arg name="param_file_name" value="$(arg param_file_name)"/>
+		</include>
 
-    <!-- ========== CORE LANE FOLLOWING SYSTEM (REQUIRED) ========== -->
-    <!-- Enable complete lane following pipeline for autonomous navigation -->
-    <arg name="lane_following" default="true"/>
-    <arg name="/lane_following/line_detection" default="true"/>
-    <arg name="/lane_following/ground_projection" default="true"/>
-    <arg name="/lane_following/lane_filter" default="true"/>
-    <arg name="/lane_following/stop_line_filter" default="true"/>
-    <arg name="/lane_following/lane_controller" default="true"/>
+		<!-- Lane Filter -->
+		<remap from="lane_filter_node/segment_list" to="ground_projection_node/lineseglist_out"/>
+		<remap from="lane_filter_node/car_cmd" to="car_cmd_switch_node/cmd"/>
+		<include file="$(find lane_filter)/launch/lane_filter_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+			<arg name="param_file_name" value="$(arg param_file_name)"/>
+		</include>
 
-    <!-- ========== VEHICLE DETECTION & AVOIDANCE (REQUIRED) ========== -->
-	<arg name="vehicle_avoidance" value="true"/>
-	<arg name="/vehicle_avoidance/detection" value="true" />
-	<arg name="/vehicle_avoidance/filter" value="true" />
+		<!-- Stop Line Filter -->
+		<remap from="stop_line_filter_node/lanewidth" to="lane_filter_node/lanewidth"/>
+		<group unless="$(arg use_ml_lane)">
+		  <remap from="stop_line_filter_node/lane_pose" to="lane_filter_node/lane_pose"/>
+		</group>
+		<group if="$(arg use_ml_lane)">
+		  <remap from="stop_line_filter_node/lane_pose" to="lane_following_ml_node/lane_pose"/>
+		</group>
+		<remap from="stop_line_filter_node/segment_list" to="ground_projection_node/lineseglist_out"/>
+		<include file="$(find stop_line_filter)/launch/stop_line_filter_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+			<arg name="param_file_name" value="$(arg param_file_name)"/>
+		</include>
 
-    <!-- ========== LED COMMUNICATION SYSTEM ========== -->
-    <!-- Enable LED system for safety signaling and status indication -->
-    <arg name="LED" default="true" />
-	<arg name="/LED/pattern_switch" default="true" />
-	<arg name="/LED/joystick" default="false" />  <!-- Keep manual control disabled by default -->
-	<arg name="/LED/interpreter" default="false" />
-    <arg name="/LED/emitter" default="true" />
+        <!-- Lane Following ML -->
+        <group if="$(arg use_ml_lane)">
+        <include file="$(find lane_following_ml)/launch/lane_following_onnx_node.launch">
+        <arg name="veh" value="$(arg veh)"/>
+        <arg name="onnx_model_path" value="$(arg onnx_model_path)"/>
+         <arg name="input_size" value="416"/>
+         <arg name="postprocess_mode" value="seg_centerline"/>
+         <arg name="fov_deg" value="80.0"/>
+         <arg name="meters_per_pixel" value="0.0020"/>
+         <arg name="invert_d" value="false"/>
+         <arg name="invert_phi" value="false"/>
+         <arg name="ema_alpha" value="0.6"/>
+         <arg name="publish_rate_hz" value="15.0"/>
+       </include>
+       </group>
+        
 
-    <!-- ========== APRILTAG DETECTION (REQUIRED FOR INTERSECTIONS) ========== -->
-    <!-- Enable AprilTag detection for traffic signs and intersection navigation -->
-	<arg name="apriltags" default="true"/>
+		<!-- Lane Controller (default: classical lane filter) -->
+       <group unless="$(arg use_ml_lane)">
+       <remap from="lane_controller_node/lane_pose" to="lane_filter_node/lane_pose"/>
+       <remap from="lane_controller_node/wheels_cmd" to="wheels_driver_node/wheels_cmd_executed"/>
+       <remap from="lane_controller_node/obstacle_distance_reading" to="vehicle_filter_node/virtual_stop_line"/>
+       <remap from="lane_controller_node/stop_line_reading" to="stop_line_filter_node/stop_line_reading"/>
+       <include file="$(find lane_control)/launch/lane_controller_node.launch">
+       <arg name="veh" value="$(arg veh)"/>
+       <arg name="param_file_name" value="$(arg param_file_name)"/>
+      </include>
+      </group>
 
-    <!-- ========== OBJECT DETECTION SYSTEM ========== -->
-    <!-- Enable object detection for enhanced perception and safety -->
-    <arg name="object_detection" default="true"/>
-    <arg name="object_detection/AIDO_eval" default="false"/>
+      <!-- Lane Controller (ML lane pose) -->
+      <group if="$(arg use_ml_lane)">
+      <!-- Remap the controller's private input to the ML node's output -->
+      <remap from="lane_controller_node/lane_pose" to="lane_following_ml_node/lane_pose"/>
+      <remap from="lane_controller_node/wheels_cmd" to="wheels_driver_node/wheels_cmd_executed"/>
+      <remap from="lane_controller_node/obstacle_distance_reading" to="vehicle_filter_node/virtual_stop_line"/>
+      <remap from="lane_controller_node/stop_line_reading" to="stop_line_filter_node/stop_line_reading"/>
+      <include file="$(find lane_control)/launch/lane_controller_node.launch">
+      <arg name="veh" value="$(arg veh)"/>
+      <arg name="param_file_name" value="$(arg param_file_name)"/>
+      </include>
+      </group>
 
-    <!-- ========== ADVANCED SAFETY & NAVIGATION SYSTEM ARGUMENTS ========== -->
-    <!-- Enable/disable advanced features - set to false for baseline system -->
-    <arg name="advanced_safety_system" default="true" doc="Enable emergency stop, collision detection, and safety arbitration"/>
-    <arg name="enhanced_perception_system" default="true" doc="Enable predictive perception, scene understanding, and sensor fusion"/>
-    <arg name="adaptive_speed_control" default="true" doc="Enable dynamic speed adjustment based on environmental conditions"/>
-    <arg name="lane_change_control" default="true" doc="Enable dynamic lane changing with traffic rules compliance"/>
-    <arg name="predictive_perception" default="true" doc="Enable trajectory prediction and multi-object tracking"/>
-    <arg name="safety_monitoring" default="true" doc="Enable system health monitoring and diagnostics"/>
-    <arg name="performance_monitoring" default="true" doc="Enable performance metrics and optimization"/>
-    <!-- ================================================================== -->
-
-    
-    <!-- Real camera node (official Duckietown camera). To avoid collisions, set external_camera:=true if another camera_node is already running. -->
-    <group if="$(eval arg('camera') and not arg('camera_mock') and not arg('external_camera'))">
-        <include file="$(find camera)/launch/camera_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="config" value="$(arg config)"/>
-            <arg name="param_file_name" value="$(arg param_file_name)"/>
-            <arg name="camera_type" value="$(arg camera_type)"/>
-            <arg name="framerate" value="$(arg framerate)"/>
-            <arg name="res_w" value="$(arg res_w)"/>
-            <arg name="res_h" value="$(arg res_h)"/>
-            <arg name="exposure_mode" value="$(arg exposure_mode)"/>
-            <arg name="flip_method" value="$(arg flip_method)"/>
-            <arg name="sensor_mode" value="$(arg sensor_mode)"/>
-        </include>
-    </group>
-
-    <!-- Mock camera node -->
-    <group if="$(eval arg('camera') and arg('camera_mock'))">
-        <include file="$(find camera_mock)/launch/camera_mock_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="config" value="$(arg config)"/>
-            <arg name="param_file_name" value="$(arg param_file_name)"/>
-            <arg name="publish_rate" value="$(arg framerate)"/>
-            <arg name="image_width" value="$(arg res_w)"/>
-            <arg name="image_height" value="$(arg res_h)"/>
-        </include>
-    </group>
-
-    <!-- Start Object Detection -->
-    <group if="$(arg object_detection)">
-        <remap from="object_detection_node/image/compressed" to="/$(arg veh)/camera_node/image/compressed"/>
-        <include file="$(find object_detection)/launch/object_detection_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="AIDO_eval" value="$(arg object_detection/AIDO_eval)"/>
-        </include>
-    </group>
-    <!-- End object detection -->
-
-   <!-- Image Decoding -->
-    <group if="$(arg /camera/raw)">
-        <remap from="decoder_node/image_in" to="/$(arg veh)/camera_node/image/compressed"/>
-        <remap from="decoder_node/image_out" to="/$(arg veh)/camera_node/image/raw"/>
-        <include file="$(find image_processing)/launch/image_decoding.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="param_file_name" value="$(arg param_file_name)"/>
-        </include>
-    </group>
-
-    <!-- Image Rectification -->
-    <group if="$(arg /camera/rect)">
-        <remap from="rectifier_node/image_in" to="/$(arg veh)/camera_node/image/compressed"/>
-        <remap from="rectifier_node/camera_info_in" to="/$(arg veh)/camera_node/camera_info"/>
-        <include file="$(find image_processing)/launch/image_rectification.launch">
-            <arg name="veh" value="$(arg veh)"/>
-        </include>
-    </group>
-    <!-- End Camera -->
-
-    <!-- Start Lane Following / LF, IN-->
-    <group if="$(arg lane_following)">
-        <!-- Line Detector -->
-        <group if="$(arg /lane_following/line_detection)">
-            <remap from="line_detector_node/thresholds" to="/$(arg veh)/anti_instagram_node/thresholds"/>
-            <remap from="line_detector_node/image/compressed" to="/$(arg veh)/camera_node/image/compressed"/>
-            <include file="$(find line_detector)/launch/line_detector_node.launch">
-                <arg name="veh" value="$(arg veh)"/>
-                <arg name="param_file_name" value="$(arg line_detector_param_file_name)"/>
-            </include>
-        </group>
-
-        <!-- Ground projection -->
-        <group if="$(arg /lane_following/ground_projection)">
-            <remap from="~lineseglist_in" to="/$(arg veh)/line_detector_node/segment_list"/>
-            <remap from="~cali_image" to="/$(arg veh)/$(arg camera_topic)/image/raw"/>
-            <remap from="~camera_info" to="/$(arg veh)/$(arg camera_topic)/camera_info"/>
-            <include file="$(find ground_projection)/launch/ground_projection_node.launch">
-                <arg name="veh" value="$(arg veh)"/>
-                <arg name="param_file_name" value="$(arg param_file_name)"/>
-            </include>
-            <group if="$(arg visualization)">
-                <remap from="line_segment_visualizer_node/segment_list" to="/$(arg veh)/ground_projection_node/lineseglist_out"/>
-                <remap from="line_segment_visualizer_node/segment_list_filtered" to="/$(arg veh)/lane_filter_node/seglist_filtered"/>
-                <include file="$(find visualization_tools)/launch/line_segment_visualizer_node.launch">
-                    <arg name="veh" value="$(arg veh)" />
-                </include>
-            </group>
-        </group>
-
-        <!-- Lane Filter -->
-        <group if="$(arg /lane_following/lane_filter)">
-            <remap from="lane_filter_node/segment_list" to="/$(arg veh)/ground_projection_node/lineseglist_out"/>
-            <remap from="lane_filter_node/car_cmd" to="/$(arg veh)/car_cmd_switch_node/cmd"/>
-            <remap from="lane_filter_node/fsm_mode" to="/$(arg veh)/fsm_node/mode" />
-            <remap from="lane_filter_node/left_wheel_encoder_node/tick" to="/$(arg veh)/left_wheel_encoder_node/tick"/>
-            <remap from="lane_filter_node/right_wheel_encoder_node/tick" to="/$(arg veh)/right_wheel_encoder_node/tick"/>
-	        <!--<remap from="lane_filter_node/seglist_filtered" to="/$(arg veh)/lane_controller_node/seglist_filtered" />-->
-            <include file="$(find lane_filter)/launch/lane_filter_node.launch">
-                <arg name="veh" value="$(arg veh)"/>
-                <arg name="param_file_name" value="$(arg param_file_name)"/>
-            </include>
-        </group>
-
-        <!-- Stop Line Filter -->
-        <group if="$(arg /lane_following/stop_line_filter)">
-            <remap from="stop_line_filter_node/lanewidth" to="/$(arg veh)/lane_filter_node/lanewidth"/>
-            <remap from="stop_line_filter_node/lane_pose" to="/$(arg veh)/lane_filter_node/lane_pose"/>
-            <remap from="stop_line_filter_node/segment_list" to="/$(arg veh)/ground_projection_node/lineseglist_out"/>
-            <include file="$(find stop_line_filter)/launch/stop_line_filter_node.launch">
-                <arg name="veh" value="$(arg veh)"/>
-                <arg name="param_file_name" value="$(arg param_file_name)"/>
-            </include>
-        </group>
-
-        <!-- Lane controller -->
-        <group if="$(arg /lane_following/lane_controller)">
-            <remap from="lane_controller_node/lane_pose" to="/$(arg veh)/lane_filter_node/lane_pose"/>
-            <!-- Conditional remapping based on safety system -->
-            <remap from="lane_controller_node/wheels_cmd" to="/$(arg veh)/wheels_driver_node/wheels_cmd" unless="$(arg advanced_safety_system)" />
-            <remap from="lane_controller_node/fsm_mode" to="/$(arg veh)/fsm_node/mode" />
-            <remap from="lane_controller_node/obstacle_distance_reading" to="/$(arg veh)/vehicle_filter_node/virtual_stop_line"/>
-            <remap from="lane_controller_node/stop_line_reading" to="/$(arg veh)/stop_line_filter_node/stop_line_reading" />
-            <remap from="wheels_driver_node/radius_limit" to="/$(arg veh)/lane_controller_node/radius_limit" />
-			<!-- lane_controller_node/car_cmd routing depends on safety system -->
-            <remap from="lane_controller_node/car_cmd" to="/$(arg veh)/car_cmd_switch_node/cmd" unless="$(arg advanced_safety_system)" />
-            <!-- When safety system is enabled, lane controller output goes to safety arbiter -->
-            <!-- <remap from="lane_controller_node/set_pattern" to="/$(arg veh)/led_emitter_node/set_pattern"/> -->
-            <include file="$(find lane_control)/launch/lane_controller_node.launch">
-                <arg name="veh" value="$(arg veh)"/>
-                <arg name="param_file_name" value="$(arg param_file_name)"/>
-            </include>
-
+		<!-- Perception Data Fusion -->
+		<!-- Default: classical lane pose from lane_filter_node -->
+		<group unless="$(arg use_ml_lane)">
+			<remap from="~lane_pose" to="lane_filter_node/lane_pose"/>
+			<remap from="~enhanced_detections" to="object_detection_node/detections"/>
+			<include file="$(find predictive_perception)/launch/perception_data_fusion_node.launch">
+				<arg name="veh" value="$(arg veh)"/>
+			</include>
 		</group>
 
-        <!-- Visualization -->
-        <group if="$(arg visualization)">
-            <include file="$(find visualization_tools)/launch/lane_pose_visualizer_node.launch">
-                <arg name="veh" value="$(arg veh)"/>
-            </include>
-        </group>
-    </group>
-    <!-- End Lane Control -->
+		<!-- ML: consume lane pose from lane_following_ml_node -->
+		<group if="$(arg use_ml_lane)">
+			<remap from="~lane_pose" to="lane_following_ml_node/lane_pose"/>
+			<remap from="~enhanced_detections" to="object_detection_node/detections"/>
+			<include file="$(find predictive_perception)/launch/perception_data_fusion_node.launch">
+				<arg name="veh" value="$(arg veh)"/>
+			</include>
+		</group>
 
-    <!-- Start AprilTags -->
-	<group if="$(arg apriltags)">
-		<!-- Detection -->
-		<remap from="apriltag_detector_node/image" to="/$(arg veh)/camera_node/image/compressed" />
-		<remap from="apriltag_detector_node/camera_info" to="/$(arg veh)/camera_node/camera_info" />
+		<!-- Collision Detection Manager -->
+		<!-- Default: classical lane pose from lane_filter_node -->
+		<group unless="$(arg use_ml_lane)">
+		  <remap from="~lane_pose" to="lane_filter_node/lane_pose"/>
+		  <remap from="~vehicle_detections" to="vehicle_detection_node/detections"/>
+		  <remap from="~object_detections" to="object_detection_node/detections"/>
+		  <remap from="~car_cmd" to="car_cmd_switch_node/cmd"/>
+		  <include file="$(find safety_system)/launch/collision_detection_manager_node.launch">
+		    <arg name="veh" value="$(arg veh)"/>
+		  </include>
+		</group>
+
+		<!-- ML: consume lane pose from lane_following_ml_node -->
+		<group if="$(arg use_ml_lane)">
+		  <remap from="~lane_pose" to="lane_following_ml_node/lane_pose"/>
+		  <remap from="~vehicle_detections" to="vehicle_detection_node/detections"/>
+		  <remap from="~object_detections" to="object_detection_node/detections"/>
+		  <remap from="~car_cmd" to="car_cmd_switch_node/cmd"/>
+		  <include file="$(find safety_system)/launch/collision_detection_manager_node.launch">
+		    <arg name="veh" value="$(arg veh)"/>
+		  </include>
+		</group>
+
+		<!-- Adaptive Speed Control (A/B toggle) -->
+		<group if="$(arg use_adaptive_speed)">
+			<include file="$(find adaptive_speed_control)/launch/adaptive_speed_controller_node.launch">
+				<arg name="veh" value="$(arg veh)"/>
+				<arg name="param_file_name" value="$(arg param_file_name)"/>
+				<arg name="verbose" value="$(arg verbose)"/>
+			</include>
+		</group>
+
+		<!-- Route adaptive speed into the command switch when enabled -->
+		<group if="$(arg use_adaptive_speed)">
+			<remap from="/$(arg veh)/car_cmd_switch_node/cmd"
+			       to="/$(arg veh)/adaptive_speed_controller_node/car_cmd"/>
+		</group>
+
+		<!-- Roboflow Object Detection (A/B) -->
+		<group if="$(arg use_roboflow_det)">
+		  <include file="$(find object_detection)/launch/roboflow_object_detection_node.launch">
+		    <arg name="veh" value="$(arg veh)"/>
+		    <arg name="api_key" value="$(arg roboflow_api_key)"/>
+		    <arg name="model_id" value="$(arg roboflow_model_id)"/>
+		  </include>
+		</group>
+
+		<!-- Override enhanced detections to Roboflow when enabled -->
+		<group if="$(arg use_roboflow_det)">
+		  <remap from="/$(arg veh)/enhanced_object_detection_node/enhanced_detections"
+		         to="/$(arg veh)/roboflow_object_detection_node/enhanced_detections"/>
+		</group>
+
+		<!-- Object Detection -->
+		<remap from="object_detection_node/image/compressed" to="camera_node/image/compressed"/>
+		<include file="$(find object_detection)/launch/object_detection_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+		</include>
+
+		<!-- Vehicle Avoidance -->
+		<remap from="vehicle_detection_node/image" to="camera_node/image/compressed"/>
+		<include file="$(find vehicle_detection)/launch/vehicle_detection_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+		</include>
+
+		<remap from="vehicle_filter_node/camera_info" to="camera_node/camera_info"/>
+		<remap from="vehicle_filter_node/centers" to="vehicle_detection_node/centers"/>
+		<include file="$(find vehicle_detection)/launch/vehicle_filter_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+		</include>
+
+		<!-- LED -->
+		<include file="$(find led_emitter)/launch/led_emitter_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+		</include>
+
+		<remap from="led_pattern_switch_node/set_pattern" to="led_emitter_node/set_pattern"/>
+		<include file="$(find led_pattern_switch)/launch/led_pattern_switch_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+			<arg name="param_file_name" value="$(arg param_file_name)"/>
+		</include>
+
+		<!-- AprilTags -->
+		<remap from="apriltag_detector_node/image" to="camera_node/image/compressed"/>
+		<remap from="apriltag_detector_node/camera_info" to="camera_node/camera_info"/>
 		<include file="$(find apriltag)/launch/apriltag_detector_node.launch">
 			<arg name="veh" value="$(arg veh)"/>
 		</include>
 
-		<!-- Postprocessing -->
-		<remap from="apriltag_postprocessing_node/detections" to="/$(arg veh)/apriltag_detector_node/detections" />
+		<remap from="apriltag_postprocessing_node/detections" to="apriltag_detector_node/detections"/>
 		<include file="$(find apriltag)/launch/apriltag_postprocessing_node.launch">
 			<arg name="veh" value="$(arg veh)"/>
 			<arg name="config" value="$(arg config)"/>
 			<arg name="param_file_name" value="$(arg param_file_name)"/>
 		</include>
 	</group>
-    <!-- End Apriltags -->
-
-    <!-- Start LEDs Detection -->
-    <group if="$(arg LED)">
-
-
-        <!--remap from="led_joy_mapper_node/change_color_pattern" to="/$(arg veh)/led_emitter_node/change_color_pattern" /-->
-        <group if="$(arg /LED/joystick)">
-            <include file="$(find led_joy_mapper)/launch/led_joy_mapper_node.launch">
-                <arg name="veh" value="$(arg veh)"/>
-                <arg name="config" value="$(arg config)"/>
-                <arg name="param_file_name" value="$(arg param_file_name)"/>
-            </include>
-        </group>
-
-        <!--<remap from="led_pattern_switch_node/change_color_pattern" to="/$(arg veh)/led_emitter_node/set_pattern" />-->
-        <group if="$(arg /LED/emitter)">
-            <include file="$(find led_emitter)/launch/led_emitter_node.launch">
-                <arg name="veh" value="$(arg veh)"/>
-            </include>
-        </group>
-
-                <!--<remap from="led_pattern_switch_node/change_color_pattern" to="/$(arg veh)/led_emitter_node/set_pattern" />-->
-        <group if="$(arg /LED/pattern_switch)">
-            <remap from="led_pattern_switch_node/set_pattern" to="/$(arg veh)/led_emitter_node/set_pattern"/>
-            <include file="$(find led_pattern_switch)/launch/led_pattern_switch_node.launch">
-                <arg name="veh" value="$(arg veh)"/>
-                <arg name="param_file_name" value="$(arg param_file_name)"/>
-            </include>
-        </group>
-    </group>
-    <!-- End LEDs Detection -->
-
-	<!-- Vehicle Avoidance Detection Node -->
-	<remap from="vehicle_detection_node/image" to="/$(arg veh)/camera_node/image/compressed" />
-	<!-- <remap from="vehicle_detection_node/detection" to="/$(arg veh)/road_anomaly_watcher/obstacle_exists" /> -->
-	<group if="$(arg /vehicle_avoidance/detection)">
-		<include file="$(find vehicle_detection)/launch/vehicle_detection_node.launch">
-			<arg name="veh" value="$(arg veh)"/>
-		</include>
-	</group>
-
-	<!-- Vehicle Avoidance Filter Node -->
-	<remap from="vehicle_filter_node/mode" to="/$(arg veh)/fsm_node/mode" />
-	<!-- <remap from="vehicle_filter_node/set_pattern" to="/$(arg veh)/led_emitter_node/set_pattern"/> -->
-	<remap from="vehicle_filter_node/camera_info" to="/$(arg veh)/camera_node/camera_info" />
-	<remap from="vehicle_filter_node/centers" to="/$(arg veh)/vehicle_detection_node/centers" />
-	<!-- Breaking convention and remapping an output to make the virtual stop line readings look like
-	real stop line readings -->
-	<!-- <remap from="vehicle_filter_node/virtual_stop_line" to="/$(arg veh)/road_anomaly_watcher/obstacle_distance"/> -->
-	<!-- <remap from="vehicle_filter_node/stopped" to="/$(arg veh)/road_anomaly_watcher/obstacle_halted_vehicle"/> -->
-	<group if="$(arg /vehicle_avoidance/filter)">
-		<include file="$(find vehicle_detection)/launch/vehicle_filter_node.launch">
-			<arg name="veh" value="$(arg veh)"/>
-		</include>
-	</group>
-
-
-    <!-- Start anti-instagram / LF, IN -->
-    <group if="$(arg anti_instagram)">
-        <remap from="anti_instagram_node/uncorrected_image/compressed" to="/$(arg veh)/camera_node/image/compressed"/>
-        <!-- NOT LOADING PARAMS FROM A YAML FILE -->
-        <include file="$(find anti_instagram)/launch/anti_instagram_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <!-- <arg name="ai_interval" value="$(arg ai_interval)"/>-->
-        </include>
-    </group>
-    <!-- End anti-instagram -->
-
-    <!-- Start FSM Node -->
-    <include file="$(find fsm)/launch/fsm_node.launch">
-        <arg name="veh" value="$(arg veh)"/>
-        <arg name="param_file_name" value="$(arg param_file_name)"/>
-    </include>
-    <!-- End FSM Node -->
-
-    <!-- ========== ADVANCED SAFETY & NAVIGATION SYSTEMS ========== -->
-    <!-- 
-    This section launches the enhanced autonomous navigation system with:
-    
-    1. ENHANCED PERCEPTION SYSTEM:
-       - Predictive Perception Manager: Multi-object tracking with Kalman filters
-       - Scene Understanding Module: Context-aware environment analysis  
-       - Perception Data Fusion: Multi-modal sensor integration
-       - Enhanced Object Detection: Improved neural network inference
-    
-    2. ADVANCED SAFETY SYSTEM FOUNDATION:
-       - Emergency Stop System: <100ms collision avoidance response
-       - Collision Detection Manager: Multi-layer risk assessment
-       - Safety Fusion Manager: Coordinated safety system management
-       - Safety Command Arbiter: Priority-based command arbitration
-    
-    3. ADAPTIVE SPEED CONTROL SYSTEM:
-       - Environmental adaptation based on visibility and conditions
-       - Dynamic following distance control with time-based safety margins
-       - Smooth acceleration profiles for comfort and efficiency
-       - Integration with safety systems for coordinated control
-    
-    4. DYNAMIC LANE CHANGING SYSTEM:
-       - Traffic rules compliant lane change decision making
-       - Right-of-way evaluation and intersection-aware restrictions
-       - Priority-based lane change requests (emergency > obstacle > navigation)
-       - Multi-phase execution with signaling, feasibility assessment, and smooth trajectories
-       - Integration with enhanced perception for gap analysis and safety assessment
-    
-    5. SYSTEM MONITORING & DIAGNOSTICS:
-       - Real-time performance monitoring and optimization
-       - System health diagnostics and failure detection
-       - Advanced visualization for development and debugging
-    
-    The system maintains backward compatibility - set advanced feature flags 
-    to false to run the baseline Duckietown system.
-    -->
-    
-    <!-- Enhanced Perception System -->
-    <group if="$(arg enhanced_perception_system)">
-        <include file="$(find predictive_perception)/launch/enhanced_perception_system.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="config" value="$(arg config)"/>
-        </include>
-    </group>
-
-    <!-- Advanced Safety System Foundation -->
-    <group if="$(arg advanced_safety_system)">
-        <include file="$(find safety_system)/launch/safety_system.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="config" value="$(arg config)"/>
-            <arg name="param_file_name" value="$(arg param_file_name)"/>
-        </include>
-    </group>
-
-    <!-- Adaptive Speed Control System -->
-    <group if="$(arg adaptive_speed_control)">
-        <include file="$(find adaptive_speed_control)/launch/adaptive_speed_controller_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="config" value="$(arg config)"/>
-            <arg name="param_file_name" value="$(arg param_file_name)"/>
-            <arg name="verbose" value="$(arg verbose)"/>
-        </include>
-        
-        <!-- Performance Monitor for Adaptive Speed Control -->
-        <group if="$(arg performance_monitoring)">
-            <node name="adaptive_speed_performance_monitor" 
-                  pkg="adaptive_speed_control" 
-                  type="performance_monitor_node.py" 
-                  output="screen"
-                  ns="$(arg veh)"
-                  required="false">
-                
-                <!-- Monitor topics -->
-                <remap from="~speed_commands" to="/$(arg veh)/adaptive_speed_controller_node/car_cmd" />
-                <remap from="~safety_overrides" to="/$(arg veh)/safety_command_arbiter_node/safety_violations" />
-                <remap from="~performance_stats" to="/$(arg veh)/adaptive_speed_controller_node/performance_stats" />
-                
-                <!-- Output monitoring data -->
-                <remap from="~performance_report" to="/$(arg veh)/adaptive_speed_performance_monitor/report" />
-                
-            </node>
-        </group>
-    </group>
-
-    <!-- Dynamic Lane Changing System -->
-    <group if="$(eval arg('lane_change_control') and arg('advanced_safety_system'))">
-        <include file="$(find lane_change_control)/launch/lane_change_controller_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-        </include>
-    </group>
-
-    <!-- Enhanced Object Detection Integration -->
-    <!-- Note: Enhanced object detection is launched via enhanced_perception_system.launch -->
-    <!-- when enhanced_perception_system is enabled. No separate launch needed here. -->
-
-    <!-- Safety Command Integration - Override standard car_cmd routing -->
-    <!-- Note: Safety command arbiter is launched via safety_system.launch -->
-    <!-- when advanced_safety_system is enabled. No separate launch needed here. -->
-
-    <!-- System Health and Diagnostics -->
-    <group if="$(arg safety_monitoring)">
-        <!-- System Health Monitor -->
-        <node name="system_health_monitor" 
-              pkg="safety_system" 
-              type="dynamic_parameter_manager.py" 
-              output="screen"
-              ns="$(arg veh)"
-              required="false">
-            <param name="config_file" value="$(find safety_system)/config/safety_system_node/$(arg param_file_name).yaml" />
-            <!-- Monitor topics -->
-            <remap from="~camera_health" to="/$(arg veh)/lane_filter_node/health" />
-            <remap from="~perception_health" to="/$(arg veh)/lane_filter_node/health" />
-            <remap from="~control_health" to="/$(arg veh)/lane_controller_node/health" />
-            <remap from="~safety_health" to="/$(arg veh)/safety_fusion_manager_node/system_health_summary" />
-            <!-- Output system status -->
-            <remap from="~system_status" to="/$(arg veh)/system_health_monitor/status" />
-        </node>
-    </group>
-
-    <!-- Advanced Visualization (if enabled) -->
-    <!-- Note: Trajectory visualization is handled within the predictive perception nodes -->
-    <!-- Additional visualization tools can be added here as separate executable nodes -->
-
 </launch>

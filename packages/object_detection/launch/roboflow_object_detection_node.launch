@@ -1,0 +1,26 @@
+<launch>
+  <arg name="veh" default="$(env VEHICLE_NAME)"/>
+  <arg name="api_url" default="https://serverless.roboflow.com"/>
+  <arg name="api_key" default="$(env ROBOFLOW_API_KEY)"/>
+  <arg name="model_id" default="object-detection-dataset-ywlek/1"/>
+  <arg name="confidence" default="0.25"/>
+  <arg name="max_fps" default="4.0"/>
+  <arg name="enable_overlay" default="true"/>
+  <arg name="timeout_s" default="3.5"/>
+
+  <group ns="$(arg veh)">
+    <node pkg="object_detection"
+          type="roboflow_object_detection_node.py"
+          name="roboflow_object_detection_node"
+          output="screen">
+      <param name="veh" value="$(arg veh)"/>
+      <param name="api_url" value="$(arg api_url)"/>
+      <param name="api_key" value="$(arg api_key)"/>
+      <param name="model_id" value="$(arg model_id)"/>
+      <param name="confidence" value="$(arg confidence)"/>
+      <param name="max_fps" value="$(arg max_fps)"/>
+      <param name="enable_overlay" value="$(arg enable_overlay)"/>
+      <param name="timeout_s" value="$(arg timeout_s)"/>
+    </node>
+  </group>
+</launch>

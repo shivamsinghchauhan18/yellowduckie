@@ -1,0 +1,30 @@
+<launch>
+  <arg name="veh" default="$(env VEHICLE_NAME)"/>
+  <arg name="onnx_model_path" default="/data/nn_models/lane_following.onnx"/>
+  <arg name="input_size" default="416"/>
+  <arg name="postprocess_mode" default="seg_centerline"/>  <!-- or "angle" -->
+  <arg name="fov_deg" default="80.0"/>
+  <arg name="meters_per_pixel" default="0.0020"/>
+  <arg name="invert_d" default="false"/>
+  <arg name="invert_phi" default="false"/>
+  <arg name="ema_alpha" default="0.6"/>
+  <arg name="publish_rate_hz" default="15.0"/>
+
+  <group ns="$(arg veh)">
+    <node pkg="lane_following_ml"
+          type="lane_following_onnx_node.py"
+          name="lane_following_ml_node"
+          output="screen">
+      <param name="veh" value="$(arg veh)"/>
+      <param name="onnx_model_path" value="$(arg onnx_model_path)"/>
+      <param name="input_size" value="$(arg input_size)"/>
+      <param name="postprocess_mode" value="$(arg postprocess_mode)"/>
+      <param name="fov_deg" value="$(arg fov_deg)"/>
+      <param name="meters_per_pixel" value="$(arg meters_per_pixel)"/>
+      <param name="invert_d" value="$(arg invert_d)"/>
+      <param name="invert_phi" value="$(arg invert_phi)"/>
+      <param name="ema_alpha" value="$(arg ema_alpha)"/>
+      <param name="publish_rate_hz" value="$(arg publish_rate_hz)"/>
+    </node>
+  </group>
+</launch>

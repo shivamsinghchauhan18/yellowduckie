@@ -11,7 +11,7 @@ from std_msgs.msg import Header, String
 from sensor_msgs.msg import CompressedImage
 from geometry_msgs.msg import Point
 from duckietown_msgs.msg import LanePose
-
+from duckietown_msgs.msg import AprilTagDetectionArray
 # Custom messages (we'll create these)
 try:
     from predictive_perception.msg import SceneAnalysis, EnvironmentalConditions
@@ -118,9 +118,9 @@ class SceneUnderstandingModuleNode(DTROS):
         # Subscribe to AprilTag detections
         self.sub_apriltags = rospy.Subscriber(
             f"/{self.veh}/apriltag_detector_node/detections",
-            String,  # Placeholder - would be AprilTagDetectionArray in real implementation
+            AprilTagDetectionArray,
             self.apriltags_callback,
-            queue_size=1
+    queue_size=1
         )
         
         # Timer for regular analysis
